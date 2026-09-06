@@ -1,0 +1,64 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend deps
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Install backend deps
+        working-directory: server
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: server
+        run: bunx prisma generate
+
+      - name: Build backend
+        working-directory: server
+        run: bun run build
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust VPS host key
+        run: ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync build artifacts
+        run: |
+          rsync -az --delete dist/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/dist/"
+          rsync -az --delete --exclude=uploads server/dist/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/dist/"
+          rsync -az server/prisma/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/prisma/"
+          rsync -az server/package.json server/bun.lock "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/"
+          rsync -az deploy/ecosystem.config.js "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/ecosystem.config.js"
+
+      - name: Install deps, migrate, restart
+        run: |
+          ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            ln -sfn ../../uploads server/dist/server/uploads
+            mkdir -p server/uploads
+            cd server
+            bun install --frozen-lockfile
+            bunx prisma migrate deploy
+            cd ..
+            pm2 restart modero-api --update-env || pm2 start ecosystem.config.js
+            pm2 save
+          '
