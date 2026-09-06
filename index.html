@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <!-- Google Analytics + Clarity — deferred until first user interaction or idle,
+         so they never block the initial render / LCP. Both tags stay fully intact. -->
+    <script>
+      (function () {
+        var GA_ID = 'G-1X52THHKLL';
+        var CLARITY_ID = 'xkplneugkb';
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){ dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', GA_ID, { send_page_view: true });
+
+        var loaded = false;
+        function loadAnalytics() {
+          if (loaded) return; loaded = true;
+          // Google Analytics
+          var ga = document.createElement('script');
+          ga.async = true;
+          ga.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+          document.head.appendChild(ga);
+          // Microsoft Clarity
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r); t.async=1; t.src='https://www.clarity.ms/tag/'+i;
+            y=l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t,y);
+          })(window, document, 'clarity', 'script', CLARITY_ID);
+        }
+
+        var events = ['pointerdown','keydown','scroll','touchstart'];
+        function onFirstInteraction() {
+          events.forEach(function(e){ window.removeEventListener(e, onFirstInteraction, { passive: true }); });
+          loadAnalytics();
+        }
+        events.forEach(function(e){ window.addEventListener(e, onFirstInteraction, { passive: true }); });
+
+        // Fallback: also load once the page has been idle for a bit after load,
+        // in case the user never interacts.
+        window.addEventListener('load', function () {
+          var fire = function(){ loadAnalytics(); };
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(fire, { timeout: 4000 });
+          } else {
+            setTimeout(fire, 3500);
+          }
+        });
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Core Web Vitals: preconnect to backend & CDN origins -->
+    <link rel="preconnect" href="https://ekbszqkepthtmsxixbvt.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://ekbszqkepthtmsxixbvt.supabase.co" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    <link rel="dns-prefetch" href="https://www.clarity.ms" />
+
+    <!-- Manrope variable font — non-blocking (print-media swap trick) -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" />
+    </noscript>
+
+    <!-- Preload LCP image: first cached hero/collection image from a previous visit -->
+    <script>
+      (function () {
+        try {
+          function firstImage(key, fields) {
+            var raw = localStorage.getItem(key);
+            if (!raw) return null;
+            var list = JSON.parse(raw);
+            if (!Array.isArray(list) || list.length === 0) return null;
+            for (var i = 0; i < fields.length; i++) {
+              var v = list[0] && list[0][fields[i]];
+              if (v) return v;
+            }
+            return null;
+          }
+          var desktopUrl =
+            firstImage('hero-slides-active-v1', ['image']) ||
+            firstImage('sets-active-v1', ['image']);
+          var mobileUrl =
+            firstImage('hero-slides-active-v1', ['mobile_image', 'image']) || desktopUrl;
+          if (!desktopUrl) return;
+          function preload(href, media) {
+            var l = document.createElement('link');
+            l.rel = 'preload';
+            l.as = 'image';
+            l.href = href;
+            l.setAttribute('imagesizes', '100vw');
+            l.setAttribute('fetchpriority', 'high');
+            if (media) l.media = media;
+            document.head.appendChild(l);
+          }
+          preload(mobileUrl, '(max-width: 640px)');
+          preload(desktopUrl, '(min-width: 641px)');
+        } catch (e) {}
+      })();
+    </script>
+
+    <script>
+      (function () {
+        try {
+          try { localStorage.removeItem('site-assets-cache-v1'); } catch (e) {}
+          var raw = localStorage.getItem('site-assets-cache-v2');
+          if (!raw) return;
+          var parsed = JSON.parse(raw);
+          var url = parsed && (parsed.favicon_url || parsed.logo_url);
+          if (!url) return;
+          var clean = String(url).split('#')[0];
+          var pathPart = clean.split('?')[0];
+          var version = (pathPart.split('/').pop() || '0');
+          var sep = clean.indexOf('?') !== -1 ? '&' : '?';
+          var cacheBusted = clean + sep + 'v=' + encodeURIComponent(version);
+          var links = document.querySelectorAll("link[rel*='icon']");
+          links.forEach(function (l) { l.parentNode && l.parentNode.removeChild(l); });
+          var link = document.createElement('link');
+          link.rel = 'icon';
+          link.href = cacheBusted;
+          document.head.appendChild(link);
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Clarity is loaded together with GA inside the deferred analytics block above. -->
+    <title>Mebel — Premium Mebel va Interyer</title>
+    <meta name="description" content="Mebel — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to&#39;liq xona dizayni. Zamonaviy, minimalist, sifatli.">
+    <meta name="author" content="Mebel" />
+
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+  <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/QQ1VGtThcIQIz0sGvAimaJVOwWU2/social-images/social-1780001972241-Frame_20.webp">
+  <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/QQ1VGtThcIQIz0sGvAimaJVOwWU2/social-images/social-1780001972241-Frame_20.webp">
+  <link rel="canonical" href="https://demoproect.uz/" />
+  <meta property="og:url" content="https://demoproect.uz/" />
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Organization","name":"Mebel","url":"https://demoproect.uz","description":"Mebel — premium mebel va interyer yechimlari."}
+  </script>
+  <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"WebSite","name":"Mebel","url":"https://demoproect.uz","potentialAction":{"@type":"SearchAction","target":"https://demoproect.uz/catalog?search={search_term_string}","query-input":"required name=search_term_string"}}
+  </script>
+  <meta property="og:title" content="Mebel — Premium Mebel va Interyer">
+  <meta name="twitter:title" content="Mebel — Premium Mebel va Interyer">
+  <meta property="og:description" content="Mebel — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to&#39;liq xona dizayni. Zamonaviy, minimalist, sifatli.">
+  <meta name="twitter:description" content="Mebel — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to&#39;liq xona dizayni. Zamonaviy, minimalist, sifatli.">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+
+  <body>
+    <script>
+      (function() {
+        try {
+          var cached = localStorage.getItem('furniture-active-theme');
+          if (cached) {
+            var theme = JSON.parse(cached);
+            var root = document.documentElement;
+            if (theme.colorPalette) {
+              Object.keys(theme.colorPalette).forEach(function(key) {
+                var cssVar = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+                root.style.setProperty('--' + cssVar, theme.colorPalette[key]);
+              });
+            }
+            if (theme.typography) {
+              root.style.setProperty('--font-sans', "Manrope, system-ui, sans-serif");
+              root.style.setProperty('--font-serif', "Manrope, system-ui, sans-serif");
+              root.style.setProperty('--font-heading', "Manrope, system-ui, sans-serif");
+            }
+            if (theme.componentStyles) {
+              if (theme.componentStyles.borderRadius) root.style.setProperty('--radius', theme.componentStyles.borderRadius);
+              if (theme.componentStyles.buttonRadius) root.style.setProperty('--button-radius', theme.componentStyles.buttonRadius);
+              if (theme.componentStyles.cardRadius) root.style.setProperty('--card-radius', theme.componentStyles.cardRadius);
+              if (theme.componentStyles.shadowSm) root.style.setProperty('--shadow-sm', theme.componentStyles.shadowSm);
+              if (theme.componentStyles.shadowMd) root.style.setProperty('--shadow-md', theme.componentStyles.shadowMd);
+              if (theme.componentStyles.shadowLg) root.style.setProperty('--shadow-lg', theme.componentStyles.shadowLg);
+            }
+            if (theme.layoutSettings) {
+              if (theme.layoutSettings.containerMaxWidth) root.style.setProperty('--container-max-width', theme.layoutSettings.containerMaxWidth);
+              if (theme.layoutSettings.sectionSpacing) root.style.setProperty('--section-spacing', theme.layoutSettings.sectionSpacing);
+              if (theme.layoutSettings.cardPadding) root.style.setProperty('--card-padding', theme.layoutSettings.cardPadding);
+            }
+            if (theme.isDark) root.classList.add('dark');
+            root.setAttribute('data-theme-loaded', 'true');
+          } else {
+            document.documentElement.setAttribute('data-theme-loaded', 'true');
+          }
+        } catch (e) {}
+      })();
+      // Safety: never keep the page hidden longer than 600ms, even if theme is missing
+      setTimeout(function () {
+        document.documentElement.setAttribute('data-theme-loaded', 'true');
+      }, 600);
+    </script>
+    <style>
+      html:not([data-theme-loaded]) body > #root { visibility: hidden; }
+      html:not([data-theme-loaded]) body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: #0f0f0f;
+        z-index: 99999;
+      }
+      html:not([data-theme-loaded]) body::after {
+        content: '';
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px; height: 40px;
+        border: 3px solid #333;
+        border-top-color: #c9a96e;
+        border-radius: 50%;
+        animation: theme-loader-spin 0.8s linear infinite;
+        z-index: 100000;
+      }
+      @keyframes theme-loader-spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+      html[data-theme-loaded] body > #root { visibility: visible; }
+    </style>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

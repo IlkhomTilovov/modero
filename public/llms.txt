@@ -1,0 +1,11 @@
+# OrisHome
+
+> OrisHome — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to'liq xona dizayni. Zamonaviy, minimalist, sifatli.
+
+## Pages
+
+- [Bosh sahifa](/): OrisHome brendi va tanlangan mahsulotlar.
+- [Katalog](/catalog): Barcha mebel va interyer mahsulotlari.
+- [Biz haqimizda](/about): Kompaniya, qadriyatlar va jamoa.
+- [Aloqa](/contact): Filiallar, manzillar va aloqa ma'lumotlari.
+- [Savol-javob](/faq): Buyurtma, yetkazib berish, kafolat va to'lov bo'yicha savollar.
