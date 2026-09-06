@@ -1,10 +1,10 @@
-# OrisHome
+# Moredo
 
-> OrisHome — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to'liq xona dizayni. Zamonaviy, minimalist, sifatli.
+> Moredo — premium mebel va interyer yechimlari. Divanlar, stollar, kreslolar va to'liq xona dizayni. Zamonaviy, minimalist, sifatli.
 
 ## Pages
 
-- [Bosh sahifa](/): OrisHome brendi va tanlangan mahsulotlar.
+- [Bosh sahifa](/): Moredo brendi va tanlangan mahsulotlar.
 - [Katalog](/catalog): Barcha mebel va interyer mahsulotlari.
 - [Biz haqimizda](/about): Kompaniya, qadriyatlar va jamoa.
 - [Aloqa](/contact): Filiallar, manzillar va aloqa ma'lumotlari.

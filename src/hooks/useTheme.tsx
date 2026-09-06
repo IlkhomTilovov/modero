@@ -8,8 +8,8 @@ const THEME_READY_KEY = 'furniture-theme-ready';
 // Current live theme inlined as a first-paint fallback so mobile users do not
 // wait for a backend round-trip before the LCP hero can render.
 const DEFAULT_ACTIVE_THEME: Theme = {
-  name: 'Mirmexa Default',
-  slug: 'mirmexa-default',
+  name: 'Moredo Default',
+  slug: 'moredo-default',
   colorPalette: {
     background: '0 0% 98%',
     foreground: '210 20% 15%',

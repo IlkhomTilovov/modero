@@ -1765,7 +1765,7 @@ export default function ProductsNew() {
                           {formData.meta_title_uz || formData.keyword_uz || formData.name_uz}
                         </p>
                         <p className="text-emerald-600 text-sm">
-                          mirmexa.com.uz/product/{formData.slug || 'slug'}
+                          moredo.uz/product/{formData.slug || 'slug'}
                         </p>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {formData.meta_description_uz || formData.description_uz || L.metaFallback}
@@ -1780,7 +1780,7 @@ export default function ProductsNew() {
                           {formData.meta_title_ru || formData.keyword_ru || formData.name_ru}
                         </p>
                         <p className="text-emerald-600 text-sm">
-                          mirmexa.com.uz/ru/product/{formData.slug || 'slug'}
+                          moredo.uz/ru/product/{formData.slug || 'slug'}
                         </p>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {formData.meta_description_ru || formData.description_ru || 'Мета описание...'}

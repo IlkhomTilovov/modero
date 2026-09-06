@@ -49,7 +49,7 @@ export function HeroCarousel({ fallbackImage, fallbackMobileImage }: HeroCarouse
           contentKey="hero_product_image"
           fallbackSrc={fallbackImage}
           mobileSrc={fallbackMobileImage}
-          alt="OrisHome premium furniture"
+          alt="Moredo premium furniture"
           className="absolute inset-0 w-full h-full object-cover object-center"
           wrapperClassName="absolute inset-0 w-full h-full"
           section="hero"
@@ -63,7 +63,7 @@ export function HeroCarousel({ fallbackImage, fallbackMobileImage }: HeroCarouse
             <EditableText contentKey="hero_title_line1" fallback="SOFA" as="span" className="block" section="hero" />
           </h1>
           <p className="mt-4 text-media-foreground/80 text-lg lg:text-xl font-sans drop-shadow-sm">
-            <EditableText contentKey="hero_subtitle" fallback="Design by OrisHome" as="span" section="hero" />
+            <EditableText contentKey="hero_subtitle" fallback="Design by Moredo" as="span" section="hero" />
           </p>
         </div>
       </div>
