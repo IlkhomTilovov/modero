@@ -31,8 +31,7 @@ sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';" ||
 sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};" || true
 
 echo "== App directories =="
-mkdir -p "${APP_DIR}/dist" "${APP_DIR}/server/dist/server" "${APP_DIR}/server/uploads"
-ln -sfn ../../uploads "${APP_DIR}/server/dist/server/uploads"
+mkdir -p "${APP_DIR}/dist" "${APP_DIR}/server/src" "${APP_DIR}/server/uploads" "${APP_DIR}/shared"
 
 echo "== server/.env (production) =="
 cat > "${APP_DIR}/server/.env" <<EOF

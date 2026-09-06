@@ -5,7 +5,7 @@ module.exports = {
     {
       name: 'modero-api',
       cwd: path.join(__dirname, 'server'),
-      script: 'dist/server/src/index.js',
+      script: 'src/index.ts',
       interpreter: 'bun',
       env: { NODE_ENV: 'production' },
       autorestart: true,

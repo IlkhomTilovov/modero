@@ -28,7 +28,7 @@ jobs:
         working-directory: server
         run: bunx prisma generate
 
-      - name: Build backend
+      - name: Type-check backend
         working-directory: server
         run: bun run build
 
@@ -43,9 +43,10 @@ jobs:
       - name: Sync build artifacts
         run: |
           rsync -az --delete dist/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/dist/"
-          rsync -az --delete --exclude=uploads server/dist/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/dist/"
+          rsync -az --delete shared/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/shared/"
+          rsync -az --delete --exclude=uploads --exclude=.env server/src/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/src/"
           rsync -az server/prisma/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/prisma/"
-          rsync -az server/package.json server/bun.lock "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/"
+          rsync -az server/package.json server/bun.lock server/tsconfig.json "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/server/"
           rsync -az deploy/ecosystem.config.js "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/ecosystem.config.js"
 
       - name: Install deps, migrate, restart
@@ -53,10 +54,10 @@ jobs:
           ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
             set -e
             cd "${{ secrets.DEPLOY_PATH }}"
-            ln -sfn ../../uploads server/dist/server/uploads
             mkdir -p server/uploads
             cd server
             bun install --frozen-lockfile
+            bunx prisma generate
             bunx prisma migrate deploy
             cd ..
             pm2 restart modero-api --update-env || pm2 start ecosystem.config.js
