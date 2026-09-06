@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 export interface SystemSettings {
   id: string;
@@ -123,21 +123,30 @@ export function SystemSettingsProvider({ children }: { children: React.ReactNode
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching settings:', error);
-        setSettings((prev) => prev ?? defaultSettings);
-      } else if (data) {
-        const merged = {
-          ...defaultSettings,
-          ...data,
-        } as SystemSettings;
-        setSettings(merged);
+      const { item } = await apiGet<{ item: any }>('/api/system-settings');
+      if (item) {
+        setSettings({
+          id: item.id,
+          site_name: item.siteName || '',
+          logo_url: item.logoUrl,
+          favicon_url: item.faviconUrl,
+          contact_phone: item.contactPhone,
+          whatsapp_number: item.whatsappNumber,
+          working_hours_uz: item.workingHoursUz,
+          working_hours_ru: item.workingHoursRu,
+          address_uz: item.addressUz,
+          address_ru: item.addressRu,
+          seo_title: item.seoTitle,
+          seo_description: item.seoDescription,
+          default_language: item.defaultLanguage || 'uz',
+          languages_enabled: item.languagesEnabled || ['uz', 'ru'],
+          primary_domain: item.primaryDomain,
+          short_description_uz: item.shortDescriptionUz,
+          short_description_ru: item.shortDescriptionRu,
+          social_facebook: item.socialFacebook,
+          social_instagram: item.socialInstagram,
+          social_telegram: item.socialTelegram,
+        });
       } else {
         setSettings((prev) => prev ?? defaultSettings);
       }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Truck, RotateCcw, ShieldCheck, Headphones } from 'lucide-react';
 import { LazyImage } from '@/components/LazyImage';
@@ -120,16 +120,20 @@ export function DiscountBanner({
   // Admin panelda "Chegirma bannerida ko'rsatish" belgilangan mahsulot ustuvor.
   useEffect(() => {
     let alive = true;
-    supabase
-      .from('products')
-      .select('id, name_uz, name_ru, slug, price, original_price, images')
-      .eq('is_active', true)
-      .eq('show_in_discount_banner', true)
-      .order('sort_order', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (alive && data) setPicked(data as ProductLike);
+    apiGet<{ items: any[] }>('/api/products', { showInDiscountBanner: true, pageSize: 1 })
+      .then(({ items }) => {
+        const p = items[0];
+        if (alive && p) {
+          setPicked({
+            id: p.id,
+            name_uz: p.nameUz,
+            name_ru: p.nameRu,
+            slug: p.slug,
+            price: p.price,
+            original_price: p.originalPrice,
+            images: p.images,
+          });
+        }
       });
     return () => {
       alive = false;

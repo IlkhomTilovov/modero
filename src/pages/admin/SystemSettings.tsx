@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Save, Globe, Phone, Search, Settings2, Upload, X, Link as LinkIcon, Image, Share2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPatch, apiUpload, apiDelete } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { convertImageToWebP } from '@/lib/imageToWebp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,16 +82,31 @@ export default function SystemSettings() {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('*')
-        .limit(1)
-        .single();
+      const { item } = await apiGet<{ item: any }>('/api/system-settings');
 
-      if (error && error.code !== 'PGRST116') throw error;
-
-      if (data) {
-        const settingsData = data as any;
+      if (item) {
+        const settingsData = {
+          id: item.id,
+          site_name: item.siteName,
+          logo_url: item.logoUrl,
+          favicon_url: item.faviconUrl,
+          contact_phone: item.contactPhone,
+          whatsapp_number: item.whatsappNumber,
+          working_hours_uz: item.workingHoursUz,
+          working_hours_ru: item.workingHoursRu,
+          address_uz: item.addressUz,
+          address_ru: item.addressRu,
+          seo_title: item.seoTitle,
+          seo_description: item.seoDescription,
+          default_language: item.defaultLanguage,
+          languages_enabled: item.languagesEnabled,
+          primary_domain: item.primaryDomain,
+          short_description_uz: item.shortDescriptionUz,
+          short_description_ru: item.shortDescriptionRu,
+          social_facebook: item.socialFacebook,
+          social_instagram: item.socialInstagram,
+          social_telegram: item.socialTelegram,
+        };
         setSettings(settingsData as SystemSettingsData);
         setFormData({
           site_name: settingsData.site_name || '',
@@ -144,7 +160,7 @@ export default function SystemSettings() {
       if (formData.logo_url) {
         const oldPath = formData.logo_url.split('/').pop();
         if (oldPath && oldPath.startsWith('site-logo')) {
-          await supabase.storage.from('product-images').remove([`logos/${oldPath}`]);
+          await apiDelete(`/api/uploads?path=${encodeURIComponent(`logos/${oldPath}`)}`);
         }
       }
 
@@ -153,14 +169,10 @@ export default function SystemSettings() {
       const fileName = `site-logo-${Date.now()}.${fileExt}`;
       const filePath = `logos/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, uploadFile, { upsert: true, contentType: uploadFile.type });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(filePath);
-      const newLogoUrl = urlData.publicUrl;
+      const fd = new FormData();
+      fd.append('file', uploadFile);
+      fd.append('path', filePath);
+      const { url: newLogoUrl } = await apiUpload<{ url: string }>('/api/uploads', fd);
       setFormData({ ...formData, logo_url: newLogoUrl });
       setLogoPreview(newLogoUrl);
       toast({ title: t.successTitle, description: t.logoUploaded });
@@ -192,7 +204,7 @@ export default function SystemSettings() {
       if (formData.favicon_url) {
         const oldPath = formData.favicon_url.split('/').pop();
         if (oldPath && oldPath.startsWith('site-favicon')) {
-          await supabase.storage.from('product-images').remove([`favicons/${oldPath}`]);
+          await apiDelete(`/api/uploads?path=${encodeURIComponent(`favicons/${oldPath}`)}`);
         }
       }
 
@@ -200,14 +212,10 @@ export default function SystemSettings() {
       const fileName = `site-favicon-${Date.now()}.${fileExt}`;
       const filePath = `favicons/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(filePath);
-      const newFaviconUrl = urlData.publicUrl;
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('path', filePath);
+      const { url: newFaviconUrl } = await apiUpload<{ url: string }>('/api/uploads', fd);
       setFormData({ ...formData, favicon_url: newFaviconUrl });
       setFaviconPreview(newFaviconUrl);
       toast({ title: t.successTitle, description: t.faviconUploaded });
@@ -224,7 +232,7 @@ export default function SystemSettings() {
       try {
         const oldPath = formData.logo_url.split('/').pop();
         if (oldPath && oldPath.startsWith('site-logo')) {
-          await supabase.storage.from('product-images').remove([`logos/${oldPath}`]);
+          await apiDelete(`/api/uploads?path=${encodeURIComponent(`logos/${oldPath}`)}`);
         }
       } catch (error) {
         console.error('Error removing logo:', error);
@@ -240,7 +248,7 @@ export default function SystemSettings() {
       try {
         const oldPath = formData.favicon_url.split('/').pop();
         if (oldPath && oldPath.startsWith('site-favicon')) {
-          await supabase.storage.from('product-images').remove([`favicons/${oldPath}`]);
+          await apiDelete(`/api/uploads?path=${encodeURIComponent(`favicons/${oldPath}`)}`);
         }
       } catch (error) {
         console.error('Error removing favicon:', error);
@@ -254,18 +262,7 @@ export default function SystemSettings() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      if (settings) {
-        const { error } = await supabase
-          .from('system_settings')
-          .update(formData)
-          .eq('id', settings.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('system_settings')
-          .insert([formData]);
-        if (error) throw error;
-      }
+      await apiPatch('/api/system-settings', toCamelCase(formData));
 
       if (formData.seo_title || formData.site_name) {
         document.title = formData.seo_title || formData.site_name;

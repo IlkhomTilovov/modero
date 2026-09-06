@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 export interface HeroSlide {
   id: string;
@@ -14,6 +14,23 @@ export interface HeroSlide {
   mobile_image: string | null;
   sort_order: number;
   is_active: boolean;
+}
+
+function mapSlide(s: any): HeroSlide {
+  return {
+    id: s.id,
+    title_uz: s.titleUz,
+    title_ru: s.titleRu,
+    subtitle_uz: s.subtitleUz,
+    subtitle_ru: s.subtitleRu,
+    cta_text_uz: s.ctaTextUz,
+    cta_text_ru: s.ctaTextRu,
+    cta_link: s.ctaLink,
+    image: s.image,
+    mobile_image: s.mobileImage,
+    sort_order: s.sortOrder,
+    is_active: s.isActive,
+  };
 }
 
 const CACHE_KEY = 'hero-slides-active-v1';
@@ -41,13 +58,8 @@ export function useHeroSlides() {
   return useQuery({
     queryKey: ['hero_slides', 'active'],
     queryFn: async (): Promise<HeroSlide[]> => {
-      const { data, error } = await supabase
-        .from('hero_slides')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      const slides = (data || []) as HeroSlide[];
+      const { items } = await apiGet<{ items: any[] }>('/api/hero-slides');
+      const slides = items.map(mapSlide);
       writeCache(slides);
       return slides;
     },
@@ -60,12 +72,8 @@ export function useAllHeroSlides() {
   return useQuery({
     queryKey: ['hero_slides', 'all'],
     queryFn: async (): Promise<HeroSlide[]> => {
-      const { data, error } = await supabase
-        .from('hero_slides')
-        .select('*')
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      return (data || []) as HeroSlide[];
+      const { items } = await apiGet<{ items: any[] }>('/api/hero-slides/admin');
+      return items.map(mapSlide);
     },
     staleTime: 30 * 1000,
   });

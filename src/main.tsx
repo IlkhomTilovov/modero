@@ -13,7 +13,7 @@ declare const __BUILD_ID__: string;
     const prev = localStorage.getItem(KEY);
     if (prev !== __BUILD_ID__) {
       // Muhim kalitlar saqlanadi: auth sessiyasi, tema, savat, til
-      const KEEP = /^(sb-|supabase\.|furniture-active-theme|cart|language|i18nextLng|site-assets-cache-)/;
+      const KEEP = /^(furniture-active-theme|cart|language|i18nextLng|site-assets-cache-)/;
       const toRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);

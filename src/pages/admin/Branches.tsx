@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from '@/integrations/api/client';
+import { toCamelCase, toSnakeCase } from '@/lib/caseConvert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,14 +45,11 @@ export default function Branches() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('branches')
-      .select('*')
-      .order('order_index', { ascending: true });
-    if (error) {
-      toast({ title: 'Xatolik', description: error.message, variant: 'destructive' });
-    } else {
-      setRows((data as Branch[]) || []);
+    try {
+      const { items } = await apiGet<{ items: any[] }>('/api/branches/admin');
+      setRows(toSnakeCase<Branch[]>(items));
+    } catch (err) {
+      toast({ title: 'Xatolik', description: err instanceof ApiError ? err.message : 'Yuklashda xatolik', variant: 'destructive' });
     }
     setLoading(false);
   };
@@ -91,17 +89,17 @@ export default function Branches() {
       toast({ title: 'Koordinatalarni kiriting', variant: 'destructive' });
       return;
     }
-    const payload = {
+    const payload = toCamelCase({
       ...form,
       phone: form.phone?.trim() || null,
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
-    };
-    const { error } = editingId
-      ? await supabase.from('branches').update(payload).eq('id', editingId)
-      : await supabase.from('branches').insert(payload);
-    if (error) {
-      toast({ title: 'Xatolik', description: error.message, variant: 'destructive' });
+    });
+    try {
+      if (editingId) await apiPatch(`/api/branches/${editingId}`, payload);
+      else await apiPost('/api/branches', payload);
+    } catch (err) {
+      toast({ title: 'Xatolik', description: err instanceof ApiError ? err.message : 'Saqlashda xatolik', variant: 'destructive' });
       return;
     }
     toast({ title: editingId ? 'Yangilandi' : "Qo'shildi" });
@@ -111,9 +109,10 @@ export default function Branches() {
 
   const remove = async (id: string) => {
     if (!confirm("Filialni o'chirishga ishonchingiz komilmi?")) return;
-    const { error } = await supabase.from('branches').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Xatolik', description: error.message, variant: 'destructive' });
+    try {
+      await apiDelete(`/api/branches/${id}`);
+    } catch (err) {
+      toast({ title: 'Xatolik', description: err instanceof ApiError ? err.message : "O'chirishda xatolik", variant: 'destructive' });
       return;
     }
     toast({ title: "O'chirildi" });
@@ -121,9 +120,12 @@ export default function Branches() {
   };
 
   const toggleActive = async (b: Branch) => {
-    const { error } = await supabase.from('branches').update({ is_active: !b.is_active }).eq('id', b.id);
-    if (error) toast({ title: 'Xatolik', description: error.message, variant: 'destructive' });
-    else load();
+    try {
+      await apiPatch(`/api/branches/${b.id}`, { isActive: !b.is_active });
+      load();
+    } catch (err) {
+      toast({ title: 'Xatolik', description: err instanceof ApiError ? err.message : 'Xatolik', variant: 'destructive' });
+    }
   };
 
   return (

@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/integrations/api/client';
+import { toCamelCase, toSnakeCase } from '@/lib/caseConvert';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminT } from '@/hooks/useAdminT';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -92,24 +93,16 @@ export default function CheckoutFormSettings() {
 
   const fetchFields = async () => {
     try {
-      const { data: fieldsData, error: fieldsError } = await supabase
-        .from('checkout_fields')
-        .select('*')
-        .order('sort_order', { ascending: true });
+      const { items: fieldsData } = await apiGet<{ items: any[] }>('/api/checkout-fields/admin');
+      const { items: optionsData } = await apiGet<{ items: any[] }>('/api/checkout-field-options/admin');
 
-      if (fieldsError) throw fieldsError;
-
-      const { data: optionsData, error: optionsError } = await supabase
-        .from('checkout_field_options')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (optionsError) throw optionsError;
+      const fieldsSnake = toSnakeCase<CheckoutField[]>(fieldsData);
+      const optionsSnake = toSnakeCase<CheckoutFieldOption[]>(optionsData);
 
       // Group options by field_id
-      const fieldsWithOptions = (fieldsData || []).map(field => ({
+      const fieldsWithOptions = fieldsSnake.map(field => ({
         ...field,
-        options: (optionsData || []).filter(opt => opt.field_id === field.id),
+        options: optionsSnake.filter(opt => opt.field_id === field.id),
       }));
 
       setFields(fieldsWithOptions);
@@ -189,35 +182,25 @@ export default function CheckoutFormSettings() {
     setSaving(true);
     try {
       if (editingField) {
-        const { error } = await supabase
-          .from('checkout_fields')
-          .update({
-            label_uz: fieldForm.label_uz,
-            label_ru: fieldForm.label_ru,
-            field_type: fieldForm.field_type,
-            icon: fieldForm.icon || null,
-            is_required: fieldForm.is_required,
-            is_active: fieldForm.is_active,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingField.id);
-
-        if (error) throw error;
+        await apiPatch(`/api/checkout-fields/${editingField.id}`, toCamelCase({
+          label_uz: fieldForm.label_uz,
+          label_ru: fieldForm.label_ru,
+          field_type: fieldForm.field_type,
+          icon: fieldForm.icon || null,
+          is_required: fieldForm.is_required,
+          is_active: fieldForm.is_active,
+        }));
       } else {
         const maxOrder = Math.max(...fields.map(f => f.sort_order), -1);
-        const { error } = await supabase
-          .from('checkout_fields')
-          .insert({
-            label_uz: fieldForm.label_uz,
-            label_ru: fieldForm.label_ru,
-            field_type: fieldForm.field_type,
-            icon: fieldForm.icon || null,
-            is_required: fieldForm.is_required,
-            is_active: fieldForm.is_active,
-            sort_order: maxOrder + 1,
-          });
-
-        if (error) throw error;
+        await apiPost('/api/checkout-fields', toCamelCase({
+          label_uz: fieldForm.label_uz,
+          label_ru: fieldForm.label_ru,
+          field_type: fieldForm.field_type,
+          icon: fieldForm.icon || null,
+          is_required: fieldForm.is_required,
+          is_active: fieldForm.is_active,
+          sort_order: maxOrder + 1,
+        }));
       }
 
       toast({ title: t.saved });
@@ -239,12 +222,7 @@ export default function CheckoutFormSettings() {
     if (!confirm(t.confirmDeleteField)) return;
 
     try {
-      const { error } = await supabase
-        .from('checkout_fields')
-        .delete()
-        .eq('id', fieldId);
-
-      if (error) throw error;
+      await apiDelete(`/api/checkout-fields/${fieldId}`);
       toast({ title: t.deleted });
       fetchFields();
     } catch (error) {
@@ -268,15 +246,10 @@ export default function CheckoutFormSettings() {
     const field2 = fields[swapIndex];
 
     try {
-      await supabase
-        .from('checkout_fields')
-        .update({ sort_order: field2.sort_order })
-        .eq('id', field1.id);
-
-      await supabase
-        .from('checkout_fields')
-        .update({ sort_order: field1.sort_order })
-        .eq('id', field2.id);
+      await Promise.all([
+        apiPatch(`/api/checkout-fields/${field1.id}`, { sortOrder: field2.sort_order }),
+        apiPatch(`/api/checkout-fields/${field2.id}`, { sortOrder: field1.sort_order }),
+      ]);
 
       fetchFields();
     } catch (error) {
@@ -320,34 +293,24 @@ export default function CheckoutFormSettings() {
     setSaving(true);
     try {
       if (editingOption) {
-        const { error } = await supabase
-          .from('checkout_field_options')
-          .update({
-            label_uz: optionForm.label_uz,
-            label_ru: optionForm.label_ru,
-            value: optionForm.value,
-            is_active: optionForm.is_active,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingOption.id);
-
-        if (error) throw error;
+        await apiPatch(`/api/checkout-field-options/${editingOption.id}`, toCamelCase({
+          label_uz: optionForm.label_uz,
+          label_ru: optionForm.label_ru,
+          value: optionForm.value,
+          is_active: optionForm.is_active,
+        }));
       } else {
         const field = fields.find(f => f.id === optionFieldId);
         const maxOrder = Math.max(...(field?.options?.map(o => o.sort_order) || []), -1);
 
-        const { error } = await supabase
-          .from('checkout_field_options')
-          .insert({
-            field_id: optionFieldId,
-            label_uz: optionForm.label_uz,
-            label_ru: optionForm.label_ru,
-            value: optionForm.value,
-            is_active: optionForm.is_active,
-            sort_order: maxOrder + 1,
-          });
-
-        if (error) throw error;
+        await apiPost('/api/checkout-field-options', toCamelCase({
+          field_id: optionFieldId,
+          label_uz: optionForm.label_uz,
+          label_ru: optionForm.label_ru,
+          value: optionForm.value,
+          is_active: optionForm.is_active,
+          sort_order: maxOrder + 1,
+        }));
       }
 
       toast({ title: t.saved });
@@ -369,12 +332,7 @@ export default function CheckoutFormSettings() {
     if (!confirm(t.confirmDeleteOption)) return;
 
     try {
-      const { error } = await supabase
-        .from('checkout_field_options')
-        .delete()
-        .eq('id', optionId);
-
-      if (error) throw error;
+      await apiDelete(`/api/checkout-field-options/${optionId}`);
       toast({ title: t.deleted });
       fetchFields();
     } catch (error) {
@@ -401,15 +359,10 @@ export default function CheckoutFormSettings() {
     const opt2 = field.options[swapIndex];
 
     try {
-      await supabase
-        .from('checkout_field_options')
-        .update({ sort_order: opt2.sort_order })
-        .eq('id', opt1.id);
-
-      await supabase
-        .from('checkout_field_options')
-        .update({ sort_order: opt1.sort_order })
-        .eq('id', opt2.id);
+      await Promise.all([
+        apiPatch(`/api/checkout-field-options/${opt1.id}`, { sortOrder: opt2.sort_order }),
+        apiPatch(`/api/checkout-field-options/${opt2.id}`, { sortOrder: opt1.sort_order }),
+      ]);
 
       fetchFields();
     } catch (error) {

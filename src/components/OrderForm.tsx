@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { supabase } from '@/integrations/supabase/client';
+import { apiPost } from '@/integrations/api/client';
 import { z } from 'zod';
 
 const orderSchema = z.object({
@@ -117,20 +117,12 @@ export function OrderForm({ open, onOpenChange }: OrderFormProps) {
         },
       }));
 
-      const { data: orderResult, error: orderError } = await supabase.functions.invoke('create-order', {
-        body: {
-          customer_name: formData.name.trim(),
-          customer_phone: formData.phone.replace(/\s/g, ''),
-          customer_message: formData.message || undefined,
-          items: orderItems,
-        },
+      await apiPost('/api/orders', {
+        customer_name: formData.name.trim(),
+        customer_phone: formData.phone.replace(/\s/g, ''),
+        customer_message: formData.message || undefined,
+        items: orderItems,
       });
-
-      if (orderError) throw orderError;
-
-      if (!orderResult.success) {
-        throw new Error(orderResult.error || 'Buyurtma yaratishda xatolik');
-      }
 
       toast({
         title: language === 'uz' ? 'Muvaffaqiyat!' : 'Успешно!',

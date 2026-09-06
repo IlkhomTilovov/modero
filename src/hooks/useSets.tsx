@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { Product } from '@/hooks/useProducts';
+import { apiGet } from '@/integrations/api/client';
+import { mapApiProduct, type Product } from '@/hooks/useProducts';
 
 export interface ProductSet {
   id: string;
@@ -13,7 +13,20 @@ export interface ProductSet {
   is_active: boolean;
 }
 
-// Public hook: returns first active set + its products (for homepage)
+function mapSet(s: any): ProductSet {
+  return {
+    id: s.id,
+    title_uz: s.titleUz,
+    title_ru: s.titleRu,
+    image: s.image,
+    href: s.href,
+    product_ids: s.productIds,
+    sort_order: s.sortOrder,
+    is_active: s.isActive,
+  };
+}
+
+// Public hook: returns active sets + their products (for homepage)
 export function useActiveSets(enabled = true) {
   const [sets, setSets] = useState<ProductSet[]>([]);
   const [productsBySet, setProductsBySet] = useState<Record<string, Product[]>>({});
@@ -27,36 +40,30 @@ export function useActiveSets(enabled = true) {
 
     (async () => {
       try {
-        const { data: setsData, error } = await supabase
-          .from('sets')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-        if (error) throw error;
-
-        const list = (setsData || []) as ProductSet[];
+        const { items } = await apiGet<{ items: any[] }>('/api/sets');
+        const list = items.map(mapSet);
         setSets(list);
-        // LCP preload uchun keshlaymiz (index.html birinchi rasmni preload qiladi)
+
         try {
           localStorage.setItem(
             'sets-active-v1',
-            JSON.stringify(list.slice(0, 1).map(s => ({ image: s.image })))
+            JSON.stringify(list.slice(0, 1).map((s) => ({ image: s.image })))
           );
         } catch {}
 
-
-        const allIds = Array.from(new Set(list.flatMap(s => s.product_ids || [])));
+        const allIds = Array.from(new Set(list.flatMap((s) => s.product_ids || [])));
         if (allIds.length > 0) {
-          const { data: prods } = await supabase
-            .from('products')
-            .select('*')
-            .in('id', allIds)
-            .eq('is_active', true);
+          const { items: prods } = await apiGet<{ items: any[] }>('/api/products', {
+            productIds: allIds,
+            pageSize: allIds.length,
+          });
           const byId: Record<string, Product> = {};
-          (prods || []).forEach(p => { byId[p.id] = p as Product; });
+          prods.map(mapApiProduct).forEach((p) => {
+            byId[p.id] = p;
+          });
           const map: Record<string, Product[]> = {};
-          list.forEach(s => {
-            map[s.id] = (s.product_ids || []).map(id => byId[id]).filter(Boolean);
+          list.forEach((s) => {
+            map[s.id] = (s.product_ids || []).map((id) => byId[id]).filter(Boolean);
           });
           setProductsBySet(map);
         }
@@ -78,15 +85,19 @@ export function useAllSets() {
 
   const refetch = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('sets')
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (!error) setSets((data || []) as ProductSet[]);
-    setLoading(false);
+    try {
+      const { items } = await apiGet<{ items: any[] }>('/api/sets/admin');
+      setSets(items.map(mapSet));
+    } catch (e) {
+      console.error('useAllSets:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { refetch(); }, []);
+  useEffect(() => {
+    refetch();
+  }, []);
 
   return { sets, loading, refetch };
 }

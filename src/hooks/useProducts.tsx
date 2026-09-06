@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 export interface Product {
   id: string;
@@ -79,6 +79,63 @@ export interface ProductsResponse {
 
 const PAGE_SIZE = 24;
 
+// Maps a camelCase API product row onto the snake_case shape every page/component
+// in this codebase already expects (kept as-is to avoid touching ~15 consumer files).
+export function mapApiProduct(p: any): Product {
+  return {
+    id: p.id,
+    name_uz: p.nameUz,
+    name_ru: p.nameRu,
+    slug: p.slug,
+    description_uz: p.descriptionUz,
+    description_ru: p.descriptionRu,
+    full_description_uz: p.fullDescriptionUz,
+    full_description_ru: p.fullDescriptionRu,
+    category_id: p.categoryId,
+    price: p.price,
+    original_price: p.originalPrice,
+    images: p.images,
+    materials: p.materials,
+    sizes: p.sizes,
+    colors: p.colors,
+    fur_length: p.furLength,
+    application: p.application,
+    is_negotiable: p.isNegotiable,
+    in_stock: p.inStock,
+    is_featured: p.isFeatured,
+    is_active: p.isActive,
+    is_indexed: p.isIndexed,
+    is_followed: p.isFollowed,
+    meta_title_uz: p.metaTitleUz,
+    meta_title_ru: p.metaTitleRu,
+    meta_description_uz: p.metaDescriptionUz,
+    meta_description_ru: p.metaDescriptionRu,
+    meta_keywords: p.metaKeywords,
+    created_at: p.createdAt,
+    updated_at: p.updatedAt,
+  };
+}
+
+function mapCategory(c: any): Category {
+  return {
+    id: c.id,
+    name_uz: c.nameUz,
+    name_ru: c.nameRu,
+    slug: c.slug,
+    icon: c.icon,
+    image: c.image,
+    is_active: c.isActive,
+    show_in_banner: c.showInBanner,
+    parent_id: c.parentId,
+    section_id: c.sectionId,
+    meta_title_uz: c.metaTitleUz,
+    meta_title_ru: c.metaTitleRu,
+    meta_description_uz: c.metaDescriptionUz,
+    meta_description_ru: c.metaDescriptionRu,
+    meta_keywords: c.metaKeywords,
+  };
+}
+
 export function useProducts(
   page: number = 1,
   filters: ProductFilters = {},
@@ -101,112 +158,37 @@ export function useProducts(
     setError(null);
 
     try {
-      let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' });
-
-      // Active filter
-      if (filters.isActive !== undefined) {
-        query = query.eq('is_active', filters.isActive);
-      } else {
-        query = query.eq('is_active', true);
+      if (filters.productIds && filters.productIds.length === 0) {
+        setData({ products: [], totalCount: 0, totalPages: 0, currentPage: page });
+        setLoadedRequestKey(requestKey);
+        setLoading(false);
+        return;
       }
 
-      if (filters.categoryIds && filters.categoryIds.length > 0) {
-        query = query.in('category_id', filters.categoryIds);
-      } else if (filters.categoryId && filters.categoryId !== 'all') {
-        query = query.eq('category_id', filters.categoryId);
-      }
-
-      if (filters.isFeatured !== undefined) {
-        query = query.eq('is_featured', filters.isFeatured);
-      }
-
-      if (filters.inStock !== undefined) {
-        query = query.eq('in_stock', filters.inStock);
-      }
-
-      // Price filters - include products with null price
-      if (filters.priceMin !== undefined && filters.priceMax !== undefined) {
-        query = query.or(`and(price.gte.${filters.priceMin},price.lte.${filters.priceMax}),price.is.null`);
-      } else if (filters.priceMin !== undefined) {
-        query = query.or(`price.gte.${filters.priceMin},price.is.null`);
-      } else if (filters.priceMax !== undefined) {
-        query = query.or(`price.lte.${filters.priceMax},price.is.null`);
-      }
-
-      if (filters.search) {
-        query = query.or(`name_uz.ilike.%${filters.search}%,name_ru.ilike.%${filters.search}%`);
-      }
-
-      // Array overlap filters - product must have ANY of the selected values (OR logic)
-      if (filters.materials && filters.materials.length > 0) {
-        query = query.overlaps('materials', filters.materials);
-      }
-
-      if (filters.colors && filters.colors.length > 0) {
-        query = query.overlaps('colors', filters.colors);
-      }
-
-      if (filters.furLengths && filters.furLengths.length > 0) {
-        query = query.overlaps('fur_length', filters.furLengths);
-      }
-
-      if (filters.applications && filters.applications.length > 0) {
-        query = query.overlaps('application', filters.applications);
-      }
-      // Discounted: original_price must be greater than price
-      if (filters.discounted) {
-        query = query.not('original_price', 'is', null).gt('original_price', 0);
-      }
-
-      // Promo tile filter (array contains)
-      if (filters.promoTileId) {
-        query = query.contains('promo_tile_ids', [filters.promoTileId]);
-      }
-
-      // Filter by specific product IDs (e.g. when viewing a set)
-      if (filters.productIds) {
-        if (filters.productIds.length === 0) {
-          // No products in set — short-circuit
-          setData({ products: [], totalCount: 0, totalPages: 0, currentPage: page });
-          setLoadedRequestKey(requestKey);
-          setLoading(false);
-          return;
-        }
-        query = query.in('id', filters.productIds);
-      }
-
-      // Pagination
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      query = query
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      const { data: products, count, error: queryError } = await query;
-
-      if (queryError) throw queryError;
-
-      // Client-side filter for discounted (original_price > price)
-      let filteredProducts = (products || []) as Product[];
-      if (filters.discounted) {
-        filteredProducts = filteredProducts.filter(
-          p => p.original_price && p.price && p.original_price > p.price
-        );
-      }
-
-      const totalCount = filters.discounted ? filteredProducts.length : (count || 0);
-      const totalPages = Math.ceil(totalCount / pageSize);
-
-      setData({
-        products: filteredProducts,
-        totalCount,
-        totalPages,
-        currentPage: page,
+      const result = await apiGet<{ items: any[]; total: number }>('/api/products', {
+        page,
+        pageSize,
+        search: filters.search,
+        categoryId: filters.categoryId && filters.categoryId !== 'all' ? filters.categoryId : undefined,
+        categoryIds: filters.categoryIds,
+        priceMin: filters.priceMin,
+        priceMax: filters.priceMax,
+        materials: filters.materials,
+        colors: filters.colors,
+        furLengths: filters.furLengths,
+        applications: filters.applications,
+        inStock: filters.inStock,
+        isFeatured: filters.isFeatured,
+        isActive: filters.isActive,
+        discounted: filters.discounted,
+        promoTileId: filters.promoTileId,
+        productIds: filters.productIds,
       });
+
+      const products = result.items.map(mapApiProduct);
+      const totalPages = Math.ceil(result.total / pageSize);
+
+      setData({ products, totalCount: result.total, totalPages, currentPage: page });
       setLoadedRequestKey(requestKey);
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -236,30 +218,12 @@ export function useFeaturedProducts(limit: number = 8, enabled = true) {
 
     const fetchFeatured = async () => {
       try {
-        // First try featured products
-        const { data: featured, error: featuredError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .eq('is_featured', true)
-          .order('sort_order', { ascending: true })
-          .limit(limit);
-
-        if (featuredError) throw featuredError;
-
-        // If no featured products, show all active products
-        if (featured && featured.length > 0) {
-          setProducts(featured);
+        const { items } = await apiGet<{ items: any[] }>('/api/products/featured');
+        if (items.length > 0) {
+          setProducts(items.slice(0, limit).map(mapApiProduct));
         } else {
-          const { data: allActive, error: allError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false })
-            .limit(limit);
-
-          if (allError) throw allError;
-          setProducts(allActive || []);
+          const all = await apiGet<{ items: any[] }>('/api/products', { pageSize: limit });
+          setProducts(all.items.map(mapApiProduct));
         }
       } catch (err) {
         console.error('Error fetching featured products:', err);
@@ -287,14 +251,8 @@ export function useCategories(enabled = true) {
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('categories')
-          .select('id, name_uz, name_ru, slug, icon, image, is_active, show_in_banner, parent_id, section_id, meta_title_uz, meta_title_ru, meta_description_uz, meta_description_ru, meta_keywords')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-        setCategories(data || []);
+        const { items } = await apiGet<{ items: any[] }>('/api/categories');
+        setCategories(items.map(mapCategory));
       } catch (err) {
         console.error('Error fetching categories:', err);
       } finally {
@@ -327,14 +285,17 @@ export function useSections(enabled = true) {
 
     const fetchSections = async () => {
       try {
-        const { data, error } = await supabase
-          .from('sections')
-          .select('id, name_uz, name_ru, slug, sort_order, is_active')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-        setSections(data || []);
+        const { items } = await apiGet<{ items: any[] }>('/api/sections');
+        setSections(
+          items.map((s) => ({
+            id: s.id,
+            name_uz: s.nameUz,
+            name_ru: s.nameRu,
+            slug: s.slug,
+            sort_order: s.sortOrder,
+            is_active: s.isActive,
+          }))
+        );
       } catch (err) {
         console.error('Error fetching sections:', err);
       } finally {
@@ -361,15 +322,8 @@ export function useProductBySlug(slug: string) {
       }
 
       try {
-        const { data, error: queryError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('slug', slug)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (queryError) throw queryError;
-        setProduct(data);
+        const { item } = await apiGet<{ item: any }>(`/api/products/${encodeURIComponent(slug)}`);
+        setProduct(item ? mapApiProduct(item) : null);
       } catch (err) {
         console.error('Error fetching product:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch product'));
@@ -397,33 +351,8 @@ export function useProductById(idOrSlug: string) {
       }
 
       try {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
-        
-        let data = null;
-        
-        if (isUUID) {
-          const { data: idData, error: idError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('id', idOrSlug)
-            .maybeSingle();
-          
-          if (idError) throw idError;
-          data = idData;
-        }
-        
-        if (!data) {
-          const { data: slugData, error: slugError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('slug', idOrSlug)
-            .maybeSingle();
-          
-          if (slugError) throw slugError;
-          data = slugData;
-        }
-
-        setProduct(data);
+        const { item } = await apiGet<{ item: any }>(`/api/products/${encodeURIComponent(idOrSlug)}`);
+        setProduct(item ? mapApiProduct(item) : null);
       } catch (err) {
         console.error('Error fetching product:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch product'));
@@ -458,36 +387,20 @@ export function useProductFilterOptions() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('materials, colors, fur_length, application, price')
-          .eq('is_active', true);
-
-        if (error) throw error;
-
-        const materialsSet = new Set<string>();
-        const colorsSet = new Set<string>();
-        const furLengthsSet = new Set<string>();
-        const applicationsSet = new Set<string>();
-        let maxPrice = 0;
-
-        (data || []).forEach((p: any) => {
-          (p.materials || []).forEach((m: string) => m && materialsSet.add(m));
-          (p.colors || []).forEach((c: string) => c && colorsSet.add(c));
-          (p.fur_length || []).forEach((f: string) => f && furLengthsSet.add(f));
-          (p.application || []).forEach((a: string) => a && applicationsSet.add(a));
-          if (p.price && p.price > maxPrice) maxPrice = p.price;
-        });
-
-        // Round max price up to nearest 100k
-        maxPrice = Math.ceil(maxPrice / 100000) * 100000 || 700000;
+        const data = await apiGet<{
+          materials: string[];
+          colors: string[];
+          furLengths: string[];
+          applications: string[];
+          maxPrice: number;
+        }>('/api/products/filter-options');
 
         setOptions({
-          materials: Array.from(materialsSet).sort(),
-          colors: Array.from(colorsSet).sort(),
-          furLengths: Array.from(furLengthsSet).sort(),
-          applications: Array.from(applicationsSet).sort(),
-          maxPrice,
+          materials: [...data.materials].sort(),
+          colors: [...data.colors].sort(),
+          furLengths: [...data.furLengths].sort(),
+          applications: [...data.applications].sort(),
+          maxPrice: data.maxPrice || 700000,
         });
       } catch (err) {
         console.error('Error fetching filter options:', err);

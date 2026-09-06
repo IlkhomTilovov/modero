@@ -4,7 +4,7 @@ import { useEditMode } from '@/hooks/useEditMode';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAutosave } from '@/hooks/useAutosave';
-import { supabase } from '@/integrations/supabase/client';
+import { apiUpload, apiDelete } from '@/integrations/api/client';
 import { convertImageToWebP } from '@/lib/imageToWebp';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -62,11 +62,10 @@ export function EditorPanel() {
   // Delete old image from storage
   const deleteOldImage = async (oldUrl: string) => {
     try {
-      // Only delete if it's our storage URL
-      if (!oldUrl.includes('product-images') || !oldUrl.includes('site-content/')) return;
-      const path = oldUrl.split('product-images/')[1];
+      if (!oldUrl.includes('/uploads/site-content/')) return;
+      const path = oldUrl.split('/uploads/')[1];
       if (path) {
-        await supabase.storage.from('product-images').remove([path]);
+        await apiDelete(`/api/uploads?path=${encodeURIComponent(path)}`);
       }
     } catch (error) {
       console.error('Error deleting old image:', error);
@@ -101,15 +100,10 @@ export function EditorPanel() {
       const fileName = `${selectedElement.contentKey}-${Date.now()}.${fileExt}`;
       const filePath = `site-content/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, uploadFile, { upsert: true, contentType: uploadFile.type });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('path', filePath);
+      const { url: publicUrl } = await apiUpload<{ url: string }>('/api/uploads', formData);
 
       // Save URL to site_content for both languages (images are language-independent)
       await updateContent(selectedElement.contentKey, 'uz', publicUrl);

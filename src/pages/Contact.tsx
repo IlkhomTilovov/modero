@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost } from '@/integrations/api/client';
 import { Phone, Mail, MapPin, Clock, Send, ArrowRight, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,12 +41,19 @@ export default function Contact() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('is_active', true)
-        .order('order_index', { ascending: true });
-      const list = (data as Branch[]) || [];
+      const { items } = await apiGet<{ items: any[] }>('/api/branches');
+      const list: Branch[] = items.map((b) => ({
+        id: b.id,
+        name_uz: b.nameUz,
+        name_ru: b.nameRu,
+        address_uz: b.addressUz,
+        address_ru: b.addressRu,
+        phone: b.phone,
+        latitude: b.latitude,
+        longitude: b.longitude,
+        is_active: b.isActive,
+        order_index: b.orderIndex,
+      }));
       setBranches(list);
       if (list.length > 0) setSelectedBranchId(list[0].id);
     })();
@@ -64,14 +71,12 @@ export default function Contact() {
     setLoading(true);
     
     try {
-      const { error } = await supabase.from('contact_messages').insert({
+      await apiPost('/api/contact-messages', {
         name: form.name.trim(),
         phone: form.phone.trim(),
-        email: form.email?.trim() || null,
+        email: form.email?.trim() || undefined,
         message: form.message.trim(),
       });
-
-      if (error) throw error;
 
       toast({
         title: t.contact.form.success,
@@ -93,7 +98,7 @@ export default function Contact() {
 
   const contactInfo = [
     { icon: Phone, labelKey: 'contact_phone_label', valueKey: 'contact_phone_value', label: t.contact.info.phone, value: '', href: '#' },
-    { icon: Mail, labelKey: 'contact_email_label', valueKey: 'contact_email_value', label: t.contact.info.email, value: 'info@orsihome.uz', href: 'mailto:info@orsihome.uz' },
+    { icon: Mail, labelKey: 'contact_email_label', valueKey: 'contact_email_value', label: t.contact.info.email, value: 'info@moredo.uz', href: 'mailto:info@moredo.uz' },
     { icon: Clock, labelKey: 'contact_hours_label', valueKey: 'contact_hours_value', label: t.contact.info.workingHours, value: 'Du-Ju: 9:00-18:00, Sha: 10:00-16:00', href: undefined },
   ];
 

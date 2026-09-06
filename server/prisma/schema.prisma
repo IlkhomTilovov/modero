@@ -1,0 +1,420 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppRole {
+  admin
+  manager
+  seller
+
+  @@map("app_role")
+}
+
+// ---------- Auth ----------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile        Profile?
+  userRole       UserRole?
+  refreshTokens  RefreshToken[]
+  createdOrders  Order[]        @relation("OrderCreatedByUser")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  name      String
+  email     String
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  role      AppRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_roles")
+}
+
+// ---------- Catalog ----------
+
+model Section {
+  id        String   @id @default(uuid())
+  nameUz    String   @map("name_uz")
+  nameRu    String   @map("name_ru")
+  slug      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  categories Category[]
+
+  @@map("sections")
+}
+
+model Category {
+  id                 String   @id @default(uuid())
+  nameUz             String   @map("name_uz")
+  nameRu             String   @map("name_ru")
+  slug               String   @unique
+  icon               String?
+  image              String?
+  isActive           Boolean  @default(true) @map("is_active")
+  isIndexed          Boolean  @default(true) @map("is_indexed")
+  isFollowed         Boolean  @default(true) @map("is_followed")
+  showInBanner       Boolean  @default(false) @map("show_in_banner")
+  parentId           String?  @map("parent_id")
+  sectionId          String?  @map("section_id")
+  sortOrder          Int?     @default(0) @map("sort_order")
+  amocrmCategory     String?  @map("amocrm_category")
+  metaTitleUz        String?  @map("meta_title_uz")
+  metaTitleRu        String?  @map("meta_title_ru")
+  metaDescriptionUz  String?  @map("meta_description_uz")
+  metaDescriptionRu  String?  @map("meta_description_ru")
+  metaKeywords       String?  @map("meta_keywords")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryParent")
+  section  Section?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  products Product[]
+
+  @@index([parentId])
+  @@index([sectionId])
+  @@map("categories")
+}
+
+model Product {
+  id                     String   @id @default(uuid())
+  nameUz                 String   @map("name_uz")
+  nameRu                 String   @map("name_ru")
+  slug                   String?  @unique
+  descriptionUz          String?  @map("description_uz")
+  descriptionRu          String?  @map("description_ru")
+  fullDescriptionUz      String?  @map("full_description_uz")
+  fullDescriptionRu      String?  @map("full_description_ru")
+  categoryId             String?  @map("category_id")
+  price                  Float?
+  originalPrice          Float?   @map("original_price")
+  images                 String[] @default([])
+  materials              String[] @default([])
+  materialsRu            String[] @default([]) @map("materials_ru")
+  sizes                  String[] @default([])
+  sizesRu                String[] @default([]) @map("sizes_ru")
+  colors                 String[] @default([])
+  colorsRu               String[] @default([]) @map("colors_ru")
+  furLength              String[] @default([]) @map("fur_length")
+  application            String[] @default([])
+  variantsUz             String[] @default([]) @map("variants_uz")
+  variantsRu             String[] @default([]) @map("variants_ru")
+  keywordUz              String?  @map("keyword_uz")
+  keywordRu              String?  @map("keyword_ru")
+  keywordVariations      String[] @default([]) @map("keyword_variations")
+  targetKeyword          String?  @map("target_keyword")
+  attributes             Json     @default("{}")
+  promoTileIds           String[] @default([]) @map("promo_tile_ids")
+  heroPriority           Int      @default(0) @map("hero_priority")
+  heroTitleUz            String?  @map("hero_title_uz")
+  heroTitleRu            String?  @map("hero_title_ru")
+  heroSubtitleUz         String?  @map("hero_subtitle_uz")
+  heroSubtitleRu         String?  @map("hero_subtitle_ru")
+  showInHero             Boolean  @default(false) @map("show_in_hero")
+  showInDiscountBanner   Boolean  @default(false) @map("show_in_discount_banner")
+  isNegotiable           Boolean  @default(false) @map("is_negotiable")
+  inStock                Boolean  @default(true) @map("in_stock")
+  isFeatured             Boolean  @default(false) @map("is_featured")
+  isActive               Boolean  @default(true) @map("is_active")
+  isIndexed              Boolean  @default(true) @map("is_indexed")
+  isFollowed             Boolean  @default(true) @map("is_followed")
+  metaTitleUz            String?  @map("meta_title_uz")
+  metaTitleRu            String?  @map("meta_title_ru")
+  metaDescriptionUz      String?  @map("meta_description_uz")
+  metaDescriptionRu      String?  @map("meta_description_ru")
+  metaKeywords           String?  @map("meta_keywords")
+  sortOrder              Int?     @default(0) @map("sort_order")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([isActive, sortOrder])
+  @@map("products")
+}
+
+// ---------- Homepage / marketing content ----------
+
+model HeroSlide {
+  id           String   @id @default(uuid())
+  titleUz      String   @map("title_uz")
+  titleRu      String   @map("title_ru")
+  subtitleUz   String   @default("") @map("subtitle_uz")
+  subtitleRu   String   @default("") @map("subtitle_ru")
+  ctaTextUz    String   @default("") @map("cta_text_uz")
+  ctaTextRu    String   @default("") @map("cta_text_ru")
+  ctaLink      String   @default("") @map("cta_link")
+  image        String?
+  mobileImage  String?  @map("mobile_image")
+  sortOrder    Int      @default(0) @map("sort_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("hero_slides")
+}
+
+model PromoTile {
+  id        String   @id @default(uuid())
+  titleUz   String   @map("title_uz")
+  titleRu   String   @map("title_ru")
+  icon      String   @default("")
+  bgClass   String   @default("") @map("bg_class")
+  textClass String   @default("") @map("text_class")
+  href      String   @default("")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("promo_tiles")
+}
+
+model Set {
+  id         String   @id @default(uuid())
+  titleUz    String   @map("title_uz")
+  titleRu    String   @map("title_ru")
+  image      String?
+  href       String?
+  productIds String[] @default([]) @map("product_ids")
+  sortOrder  Int      @default(0) @map("sort_order")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("sets")
+}
+
+model Branch {
+  id         String   @id @default(uuid())
+  nameUz     String   @map("name_uz")
+  nameRu     String   @map("name_ru")
+  addressUz  String   @map("address_uz")
+  addressRu  String   @default("") @map("address_ru")
+  latitude   Float
+  longitude  Float
+  phone      String?
+  orderIndex Int      @default(0) @map("order_index")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("branches")
+}
+
+model SiteContent {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  valueUz     String?  @map("value_uz")
+  valueRu     String?  @map("value_ru")
+  contentType String?  @map("content_type")
+  page        String?
+  section     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("site_content")
+}
+
+model SystemSettings {
+  id                  String   @id @default(uuid())
+  siteName            String?  @map("site_name")
+  logoUrl             String?  @map("logo_url")
+  faviconUrl          String?  @map("favicon_url")
+  contactPhone        String?  @map("contact_phone")
+  whatsappNumber      String?  @map("whatsapp_number")
+  workingHoursUz      String?  @map("working_hours_uz")
+  workingHoursRu      String?  @map("working_hours_ru")
+  addressUz           String?  @map("address_uz")
+  addressRu           String?  @map("address_ru")
+  seoTitle            String?  @map("seo_title")
+  seoDescription      String?  @map("seo_description")
+  defaultLanguage     String?  @default("uz") @map("default_language")
+  languagesEnabled    String[] @default(["uz", "ru"]) @map("languages_enabled")
+  primaryDomain       String?  @map("primary_domain")
+  shortDescriptionUz  String?  @map("short_description_uz")
+  shortDescriptionRu  String?  @map("short_description_ru")
+  socialFacebook      String?  @map("social_facebook")
+  socialInstagram     String?  @map("social_instagram")
+  socialTelegram      String?  @map("social_telegram")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model Theme {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  colorPalette    Json     @default("{}") @map("color_palette")
+  typography      Json     @default("{}")
+  componentStyles Json     @default("{}") @map("component_styles")
+  layoutSettings  Json     @default("{}") @map("layout_settings")
+  isActive        Boolean  @default(false) @map("is_active")
+  isDark          Boolean  @default(false) @map("is_dark")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("themes")
+}
+
+// ---------- Checkout form builder ----------
+
+model CheckoutField {
+  id          String   @id @default(uuid())
+  labelUz     String   @map("label_uz")
+  labelRu     String   @map("label_ru")
+  fieldType   String   @default("text") @map("field_type")
+  icon        String?
+  isRequired  Boolean  @default(false) @map("is_required")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  options CheckoutFieldOption[]
+
+  @@map("checkout_fields")
+}
+
+model CheckoutFieldOption {
+  id        String   @id @default(uuid())
+  fieldId   String   @map("field_id")
+  labelUz   String   @map("label_uz")
+  labelRu   String   @map("label_ru")
+  value     String
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  field CheckoutField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@index([fieldId])
+  @@map("checkout_field_options")
+}
+
+// ---------- Orders / customers ----------
+
+model Customer {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  name      String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id               String   @id @default(uuid())
+  orderNumber      String   @unique @map("order_number")
+  customerId       String?  @map("customer_id")
+  customerName     String   @map("customer_name")
+  customerPhone    String   @map("customer_phone")
+  customerMessage  String?  @map("customer_message")
+  status           String   @default("new")
+  totalPrice       Float?   @map("total_price")
+  createdByUserId  String?  @map("created_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdByUser User?       @relation("OrderCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+
+  @@index([status])
+  @@index([customerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                   String   @id @default(uuid())
+  orderId              String   @map("order_id")
+  productId            String   @map("product_id")
+  productNameSnapshot  String   @map("product_name_snapshot")
+  quantity             Int      @default(1)
+  priceSnapshot        Float?   @map("price_snapshot")
+  selectedOptions      Json?    @map("selected_options")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String?
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("contact_messages")
+}
+
+// ---------- Generic key/value settings (Telegram, amoCRM config) ----------
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

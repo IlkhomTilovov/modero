@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiPost, apiPatch, apiDelete } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { useAllPromoTiles, type PromoTile } from '@/hooks/usePromoTiles';
 import { useAdminT } from '@/hooks/useAdminT';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -63,14 +64,16 @@ export default function PromoTilesAdmin() {
       toast.error(t.promo.fillTitles);
       return;
     }
-    if (editing) {
-      const { error } = await supabase.from('promo_tiles').update(form).eq('id', editing.id);
-      if (error) return toast.error(error.message);
-      toast.success(t.promo.updated);
-    } else {
-      const { error } = await supabase.from('promo_tiles').insert(form);
-      if (error) return toast.error(error.message);
-      toast.success(t.promo.added);
+    try {
+      if (editing) {
+        await apiPatch(`/api/promo-tiles/${editing.id}`, toCamelCase(form));
+        toast.success(t.promo.updated);
+      } else {
+        await apiPost('/api/promo-tiles', toCamelCase(form));
+        toast.success(t.promo.added);
+      }
+    } catch (err: any) {
+      return toast.error(err.message);
     }
     setOpen(false);
     refresh();
@@ -78,16 +81,21 @@ export default function PromoTilesAdmin() {
 
   const remove = async (id: string) => {
     if (!confirm(t.promo.confirmRemove)) return;
-    const { error } = await supabase.from('promo_tiles').delete().eq('id', id);
-    if (error) return toast.error(error.message);
+    try {
+      await apiDelete(`/api/promo-tiles/${id}`);
+    } catch (err: any) {
+      return toast.error(err.message);
+    }
     toast.success(t.promo.removed);
     refresh();
   };
 
   const toggleActive = async (tile: PromoTile) => {
-    const { error } = await supabase
-      .from('promo_tiles').update({ is_active: !tile.is_active }).eq('id', tile.id);
-    if (error) return toast.error(error.message);
+    try {
+      await apiPatch(`/api/promo-tiles/${tile.id}`, { isActive: !tile.is_active });
+    } catch (err: any) {
+      return toast.error(err.message);
+    }
     refresh();
   };
 
@@ -96,8 +104,8 @@ export default function PromoTilesAdmin() {
     const b = tiles[idx + dir];
     if (!a || !b) return;
     await Promise.all([
-      supabase.from('promo_tiles').update({ sort_order: b.sort_order }).eq('id', a.id),
-      supabase.from('promo_tiles').update({ sort_order: a.sort_order }).eq('id', b.id),
+      apiPatch(`/api/promo-tiles/${a.id}`, { sortOrder: b.sort_order }),
+      apiPatch(`/api/promo-tiles/${b.id}`, { sortOrder: a.sort_order }),
     ]);
     refresh();
   };

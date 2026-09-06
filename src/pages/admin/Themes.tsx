@@ -16,7 +16,8 @@ import {
   Lock, Trash2, Settings2, Monitor, Smartphone, Type, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { apiPost, apiPatch, apiDelete } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { useAdminT } from '@/hooks/useAdminT';
 
 const FONT_OPTIONS = [
@@ -43,7 +44,7 @@ const RADIUS_OPTIONS = [
 
 const THEME_PRESETS = [
   {
-    name: 'OrsiHome Premium',
+    name: 'Moredo Premium',
     tagline: 'Dark Green + Beige',
     values: {
       isDark: false,
@@ -375,8 +376,7 @@ const Themes = () => {
     if (!theme.id || theme.isActive) return;
     if (!confirm(t.deleteConfirm(theme.name))) return;
     try {
-      const { error } = await supabase.from('themes').delete().eq('id', theme.id);
-      if (error) throw error;
+      await apiDelete(`/api/themes/${theme.id}`);
       toast.success(t.deletedToast);
       refreshThemes();
     } catch (error: any) {
@@ -532,12 +532,10 @@ const Themes = () => {
       };
 
       if (builderMode === 'edit' && editingTheme?.id) {
-        const { error } = await supabase.from('themes').update(themeData).eq('id', editingTheme.id);
-        if (error) throw error;
+        await apiPatch(`/api/themes/${editingTheme.id}`, toCamelCase(themeData));
         toast.success(t.updatedToast);
       } else {
-        const { error } = await supabase.from('themes').insert([{ ...themeData, is_active: false }]);
-        if (error) throw error;
+        await apiPost('/api/themes', toCamelCase({ ...themeData, is_active: false }));
         toast.success(t.savedToast);
       }
 

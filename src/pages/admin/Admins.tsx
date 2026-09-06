@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Shield, ShieldCheck, Trash2, ShoppingCart, Package, Pencil, UserCheck, UserX, Mail, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from '@/integrations/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,28 +46,12 @@ export default function Admins() {
   const [formRole, setFormRole] = useState<AppRole>('seller');
   const [formStatus, setFormStatus] = useState<'active' | 'disabled'>('active');
   
-  const { user, isAdmin, session } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
   const getInvokeErrorMessage = (err: unknown, fallback = t.genericError) => {
-    if (!err || typeof err !== 'object') return fallback;
-    const anyErr = err as any;
-    if (typeof anyErr?.message === 'string' && anyErr.message.trim()) {
-      const msg = anyErr.message.trim();
-      if (msg.toLowerCase().includes('edge function returned') || msg.toLowerCase().includes('non-2xx')) {
-        const body = anyErr?.context?.body;
-        if (typeof body === 'string' && body) {
-          try {
-            const parsed = JSON.parse(body);
-            if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error.trim();
-          } catch {}
-        }
-      }
-      return msg;
-    }
-    if (typeof (anyErr as any)?.error === 'string' && (anyErr as any).error.trim()) {
-      return (anyErr as any).error.trim();
-    }
+    if (err instanceof ApiError && err.message.trim()) return err.message.trim();
+    if (err instanceof Error && err.message.trim()) return err.message.trim();
     return fallback;
   };
 
@@ -79,31 +63,17 @@ export default function Admins() {
 
   const fetchUsers = async () => {
     try {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { users: apiUsers } = await apiGet<{ users: any[] }>('/api/admin/users');
 
-      if (profilesError) throw profilesError;
-
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-
-      if (rolesError) throw rolesError;
-
-      const usersWithRoles: UserWithProfile[] = (profiles || []).map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.user_id);
-        return {
-          id: profile.id,
-          user_id: profile.user_id,
-          name: profile.name,
-          email: profile.email,
-          role: (userRole?.role as AppRole) || 'seller',
-          status: profile.status as 'active' | 'disabled',
-          created_at: profile.created_at,
-        };
-      });
+      const usersWithRoles: UserWithProfile[] = apiUsers.map((u) => ({
+        id: u.id,
+        user_id: u.id,
+        name: u.name,
+        email: u.email,
+        role: (u.role as AppRole) || 'seller',
+        status: u.status as 'active' | 'disabled',
+        created_at: u.createdAt,
+      }));
 
       setUsers(usersWithRoles);
     } catch (error) {
@@ -127,18 +97,12 @@ export default function Admins() {
 
     setSaving(true);
     try {
-      const response = await supabase.functions.invoke('manage-users', {
-        body: {
-          action: 'create',
-          email: formEmail.trim(),
-          password: formPassword,
-          name: formName.trim(),
-          role: formRole,
-        },
+      await apiPost('/api/admin/users', {
+        email: formEmail.trim(),
+        password: formPassword,
+        name: formName.trim(),
+        role: formRole,
       });
-
-      if (response.error) throw response.error;
-      if (response.data?.error) throw new Error(response.data.error);
 
       toast({ title: t.successTitle, description: t.userCreated });
       setCreateDialogOpen(false);
@@ -156,18 +120,11 @@ export default function Admins() {
 
     setSaving(true);
     try {
-      const response = await supabase.functions.invoke('manage-users', {
-        body: {
-          action: 'update',
-          userId: selectedUser.user_id,
-          name: formName.trim(),
-          role: formRole,
-          status: formStatus,
-        },
+      await apiPatch(`/api/admin/users/${selectedUser.user_id}`, {
+        name: formName.trim(),
+        role: formRole,
+        status: formStatus,
       });
-
-      if (response.error) throw response.error;
-      if (response.data?.error) throw new Error(response.data.error);
 
       toast({ title: t.successTitle, description: t.userUpdated });
       setEditDialogOpen(false);
@@ -184,15 +141,7 @@ export default function Admins() {
 
     setSaving(true);
     try {
-      const response = await supabase.functions.invoke('manage-users', {
-        body: {
-          action: 'delete',
-          userId: selectedUser.user_id,
-        },
-      });
-
-      if (response.error) throw response.error;
-      if (response.data?.error) throw new Error(response.data.error);
+      await apiDelete(`/api/admin/users/${selectedUser.user_id}`);
 
       toast({ title: t.successTitle, description: t.userDeleted });
       setDeleteDialogOpen(false);

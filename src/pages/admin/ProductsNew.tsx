@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Video
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { convertImageToWebP } from '@/lib/imageToWebp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,6 +85,8 @@ interface Product {
   is_followed: boolean;
   target_keyword: string | null;
   keyword_variations: string[] | null;
+  keyword_uz?: string | null;
+  keyword_ru?: string | null;
   variants_uz: string[] | null;
   variants_ru: string[] | null;
   promo_tile_ids: string[] | null;
@@ -169,6 +172,51 @@ const emptyForm: FormData = {
   promo_tile_ids: [],
   attributes: [],
 };
+
+function mapApiProductForAdmin(p: any): Product {
+  return {
+    id: p.id,
+    name_uz: p.nameUz,
+    name_ru: p.nameRu,
+    slug: p.slug,
+    description_uz: p.descriptionUz,
+    description_ru: p.descriptionRu,
+    full_description_uz: p.fullDescriptionUz,
+    full_description_ru: p.fullDescriptionRu,
+    category_id: p.categoryId,
+    price: p.price,
+    original_price: p.originalPrice,
+    images: p.images || [],
+    materials: p.materials || [],
+    sizes: p.sizes || [],
+    colors: p.colors || [],
+    materials_ru: p.materialsRu || [],
+    sizes_ru: p.sizesRu || [],
+    colors_ru: p.colorsRu || [],
+    is_negotiable: p.isNegotiable,
+    in_stock: p.inStock,
+    is_featured: p.isFeatured,
+    show_in_discount_banner: p.showInDiscountBanner,
+    is_active: p.isActive,
+    created_at: p.createdAt,
+    updated_at: p.updatedAt,
+    meta_title_uz: p.metaTitleUz,
+    meta_title_ru: p.metaTitleRu,
+    meta_description_uz: p.metaDescriptionUz,
+    meta_description_ru: p.metaDescriptionRu,
+    meta_keywords: p.metaKeywords,
+    is_indexed: p.isIndexed,
+    is_followed: p.isFollowed,
+    target_keyword: p.targetKeyword,
+    keyword_variations: p.keywordVariations || [],
+    keyword_uz: p.keywordUz,
+    keyword_ru: p.keywordRu,
+    variants_uz: p.variantsUz || [],
+    variants_ru: p.variantsRu || [],
+    promo_tile_ids: p.promoTileIds || [],
+    attributes: p.attributes,
+  };
+}
 
 const ADMIN_PAGE_SIZE = 20;
 
@@ -393,13 +441,12 @@ export default function ProductsNew() {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('id, name_uz, name_ru, parent_id')
-        .order('sort_order');
-      
-      if (error) throw error;
-      setCategories(data || []);
+      const { items } = await apiGet<{ items: any[] }>('/api/categories/admin');
+      setCategories(
+        items
+          .map((c) => ({ id: c.id, name_uz: c.nameUz, name_ru: c.nameRu, parent_id: c.parentId, _sort: c.sortOrder }))
+          .sort((a, b) => (a._sort ?? 0) - (b._sort ?? 0))
+      );
     } catch (error) {
       console.error('Error:', error);
     }
@@ -408,43 +455,27 @@ export default function ProductsNew() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' });
-
-      // Apply filters
-      if (debouncedSearch) {
-        query = query.or(`name_uz.ilike.%${debouncedSearch}%,name_ru.ilike.%${debouncedSearch}%,slug.ilike.%${debouncedSearch}%`);
+      // Admin table shows products regardless of active status by default (matching
+      // the original Supabase query, which never filtered is_active except when the
+      // status dropdown explicitly asked for "active" or "inactive").
+      const params: Record<string, unknown> = {
+        page: currentPage,
+        pageSize: ADMIN_PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
+      };
+      if (statusFilter === 'active') params.isActive = true;
+      else if (statusFilter === 'inactive') params.isActive = false;
+      else {
+        params.all = true;
+        if (statusFilter === 'featured') params.isFeatured = true;
+        else if (statusFilter === 'out_of_stock') params.inStock = false;
       }
 
-      if (categoryFilter !== 'all') {
-        query = query.eq('category_id', categoryFilter);
-      }
+      const { items, total } = await apiGet<{ items: any[]; total: number }>('/api/products', params);
 
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false);
-      } else if (statusFilter === 'featured') {
-        query = query.eq('is_featured', true);
-      } else if (statusFilter === 'out_of_stock') {
-        query = query.eq('in_stock', false);
-      }
-
-      // Pagination
-      const from = (currentPage - 1) * ADMIN_PAGE_SIZE;
-      const to = from + ADMIN_PAGE_SIZE - 1;
-
-      query = query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      const { data, count, error } = await query;
-
-      if (error) throw error;
-
-      setProducts((data as any) || []);
-      setTotalCount(count || 0);
+      setProducts(items.map(mapApiProductForAdmin));
+      setTotalCount(total || 0);
     } catch (error) {
       console.error('Error:', error);
       toast({ variant: 'destructive', title: 'Xatolik', description: "Ma'lumotlarni yuklashda xatolik" });
@@ -474,10 +505,12 @@ export default function ProductsNew() {
   };
 
   const checkSlugUnique = async (slug: string, excludeId?: string): Promise<boolean> => {
-    const query = supabase.from('products').select('id').eq('slug', slug);
-    if (excludeId) query.neq('id', excludeId);
-    const { data } = await query;
-    return !data || data.length === 0;
+    try {
+      const { item } = await apiGet<{ item: any }>(`/api/products/${encodeURIComponent(slug)}`);
+      return !item || item.id === excludeId;
+    } catch {
+      return true;
+    }
   };
 
   const formatPrice = (price: number | null) => {
@@ -634,19 +667,10 @@ export default function ProductsNew() {
         const fileName = `product-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `products/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, file, {
-            upsert: true,
-            cacheControl: '31536000',
-            contentType: file.type,
-          });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('path', filePath);
+        const { url: publicUrl } = await apiUpload<{ url: string }>('/api/uploads', fd);
 
         uploadedMedia.push({ type: 'image', url: publicUrl });
       }
@@ -749,12 +773,10 @@ export default function ProductsNew() {
 
     try {
       if (selectedProduct) {
-        const { error } = await supabase.from('products').update(productData as any).eq('id', selectedProduct.id);
-        if (error) throw error;
+        await apiPatch(`/api/products/${selectedProduct.id}`, toCamelCase(productData));
         toast({ title: 'Muvaffaqiyat', description: 'Mahsulot yangilandi' });
       } else {
-        const { error } = await supabase.from('products').insert([productData as any]);
-        if (error) throw error;
+        await apiPost('/api/products', toCamelCase(productData));
         toast({ title: 'Muvaffaqiyat', description: 'Mahsulot yaratildi' });
       }
 
@@ -773,8 +795,7 @@ export default function ProductsNew() {
     if (!selectedProduct) return;
 
     try {
-      const { error } = await supabase.from('products').delete().eq('id', selectedProduct.id);
-      if (error) throw error;
+      await apiDelete(`/api/products/${selectedProduct.id}`);
       toast({ title: 'Muvaffaqiyat', description: "Mahsulot o'chirildi" });
       setDeleteDialogOpen(false);
       fetchProducts();
@@ -785,12 +806,7 @@ export default function ProductsNew() {
 
   const toggleFeatured = async (product: Product) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_featured: !product.is_featured })
-        .eq('id', product.id);
-
-      if (error) throw error;
+      await apiPatch(`/api/products/${product.id}`, { isFeatured: !product.is_featured });
       fetchProducts();
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Xatolik', description: error.message });
@@ -802,39 +818,31 @@ export default function ProductsNew() {
   const handleExportExcel = async () => {
     setExporting(true);
     try {
-      let query = supabase
-        .from('products')
-        .select('id, name_uz, name_ru, slug, category_id, price, original_price, in_stock, is_active');
-
-      if (debouncedSearch) {
-        query = query.or(`name_uz.ilike.%${debouncedSearch}%,name_ru.ilike.%${debouncedSearch}%,slug.ilike.%${debouncedSearch}%`);
-      }
-      if (categoryFilter !== 'all') {
-        query = query.eq('category_id', categoryFilter);
-      }
-      if (statusFilter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (statusFilter === 'inactive') {
-        query = query.eq('is_active', false);
-      } else if (statusFilter === 'featured') {
-        query = query.eq('is_featured', true);
-      } else if (statusFilter === 'out_of_stock') {
-        query = query.eq('in_stock', false);
+      const params: Record<string, unknown> = {
+        search: debouncedSearch || undefined,
+        categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
+        pageSize: 1000,
+      };
+      if (statusFilter === 'active') params.isActive = true;
+      else if (statusFilter === 'inactive') params.isActive = false;
+      else {
+        params.all = true;
+        if (statusFilter === 'featured') params.isFeatured = true;
+        else if (statusFilter === 'out_of_stock') params.inStock = false;
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
+      const { items } = await apiGet<{ items: any[] }>('/api/products', params);
 
-      const rows = (data || []).map((p: any) => [
+      const rows = items.map((p: any) => [
         p.id,
-        p.name_uz,
-        p.name_ru,
+        p.nameUz,
+        p.nameRu,
         p.slug || '',
-        getCategoryName(p.category_id),
+        getCategoryName(p.categoryId),
         p.price ?? '',
-        p.original_price ?? '',
-        p.in_stock ? 'TRUE' : 'FALSE',
-        p.is_active ? 'TRUE' : 'FALSE',
+        p.originalPrice ?? '',
+        p.inStock ? 'TRUE' : 'FALSE',
+        p.isActive ? 'TRUE' : 'FALSE',
       ]);
 
       const worksheet = XLSX.utils.aoa_to_sheet([[...EXPORT_HEADERS], ...rows]);
@@ -912,29 +920,24 @@ export default function ProductsNew() {
             if (price !== undefined) payload.price = price;
 
             const originalPrice = parsePriceCell(row['Eski narxi']);
-            if (originalPrice !== undefined) payload.original_price = originalPrice;
+            if (originalPrice !== undefined) payload.originalPrice = originalPrice;
 
             const inStock = parseBoolCell(row['Mavjud']);
-            if (inStock !== undefined) payload.in_stock = inStock;
+            if (inStock !== undefined) payload.inStock = inStock;
 
             const isActive = parseBoolCell(row['Faol']);
-            if (isActive !== undefined) payload.is_active = isActive;
+            if (isActive !== undefined) payload.isActive = isActive;
 
             if (Object.keys(payload).length === 0) {
               skipped++;
               return;
             }
 
-            const { data, error } = await supabase
-              .from('products')
-              .update(payload)
-              .eq('id', id)
-              .select('id');
-
-            if (error || !data || data.length === 0) {
-              failed++;
-            } else {
+            try {
+              await apiPatch(`/api/products/${id}`, payload);
               updated++;
+            } catch {
+              failed++;
             }
           })
         );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, X, ArrowUp, ArrowDown } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiPost, apiPatch, apiDelete, apiUpload } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { useAllHeroSlides, type HeroSlide } from '@/hooks/useHeroSlides';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -75,9 +76,10 @@ export default function HeroSlidesAdmin() {
     try {
       const webp = await convertImageToWebP(file);
       const path = `hero-slides/${prefix}-${Date.now()}.${webp.name.split('.').pop() || 'webp'}`;
-      const { error } = await supabase.storage.from('product-images').upload(path, webp, { contentType: webp.type });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path);
+      const formData = new FormData();
+      formData.append('file', webp);
+      formData.append('path', path);
+      const { url: publicUrl } = await apiUpload<{ url: string }>('/api/uploads', formData);
       onDone(publicUrl);
       toast.success(language === 'ru' ? 'Изображение загружено' : 'Rasm yuklandi');
     } catch (err: any) {
@@ -92,16 +94,16 @@ export default function HeroSlidesAdmin() {
       toast.error(language === 'ru' ? 'Загрузите изображение' : 'Rasm yuklang');
       return;
     }
-    const payload = {
+    const payload = toCamelCase({
       ...form,
       image: form.image || null,
       mobile_image: form.mobile_image || null,
-    };
-    const res = editing
-      ? await supabase.from('hero_slides').update(payload).eq('id', editing.id)
-      : await supabase.from('hero_slides').insert(payload);
-    if (res.error) {
-      toast.error(res.error.message);
+    });
+    try {
+      if (editing) await apiPatch(`/api/hero-slides/${editing.id}`, payload);
+      else await apiPost('/api/hero-slides', payload);
+    } catch (err: any) {
+      toast.error(err.message);
       return;
     }
     toast.success(language === 'ru' ? 'Сохранено' : 'Saqlandi');
@@ -110,13 +112,13 @@ export default function HeroSlidesAdmin() {
   };
 
   const toggleActive = async (s: HeroSlide) => {
-    await supabase.from('hero_slides').update({ is_active: !s.is_active }).eq('id', s.id);
+    await apiPatch(`/api/hero-slides/${s.id}`, { isActive: !s.is_active });
     refresh();
   };
 
   const confirmRemove = async () => {
     if (!deleting) return;
-    await supabase.from('hero_slides').delete().eq('id', deleting.id);
+    await apiDelete(`/api/hero-slides/${deleting.id}`);
     toast.success(language === 'ru' ? 'Удалено' : 'O‘chirildi');
     setDeleting(null);
     refresh();
@@ -127,8 +129,8 @@ export default function HeroSlidesAdmin() {
     const b = slides[idx + dir];
     if (!a || !b) return;
     await Promise.all([
-      supabase.from('hero_slides').update({ sort_order: b.sort_order }).eq('id', a.id),
-      supabase.from('hero_slides').update({ sort_order: a.sort_order }).eq('id', b.id),
+      apiPatch(`/api/hero-slides/${a.id}`, { sortOrder: b.sort_order }),
+      apiPatch(`/api/hero-slides/${b.id}`, { sortOrder: a.sort_order }),
     ]);
     refresh();
   };

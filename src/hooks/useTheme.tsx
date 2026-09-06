@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost } from '@/integrations/api/client';
 import { Theme } from '@/lib/themes';
 
 const THEME_CACHE_KEY = 'furniture-active-theme';
@@ -179,24 +179,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const fetchThemes = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('themes')
-        .select('*')
-        .order('name');
+      const { items } = await apiGet<{ items: any[] }>('/api/themes');
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const mappedThemes: Theme[] = data.map((t: any) => ({
+      if (items && items.length > 0) {
+        const mappedThemes: Theme[] = items.map((t: any) => ({
           id: t.id,
           name: t.name,
           slug: t.slug,
-          colorPalette: t.color_palette,
+          colorPalette: t.colorPalette,
           typography: t.typography,
-          componentStyles: t.component_styles,
-          layoutSettings: t.layout_settings,
-          isActive: t.is_active,
-          isDark: t.is_dark
+          componentStyles: t.componentStyles,
+          layoutSettings: t.layoutSettings,
+          isActive: t.isActive,
+          isDark: t.isDark
         }));
         setThemes(mappedThemes);
 
@@ -227,13 +222,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setActiveTheme = async (themeId: string) => {
     try {
       const themeToActivate = themes.find(t => t.id === themeId);
-      
-      const { error } = await supabase
-        .from('themes')
-        .update({ is_active: true })
-        .eq('id', themeId);
 
-      if (error) throw error;
+      await apiPost(`/api/themes/${themeId}/activate`);
 
       if (themeToActivate) {
         const updatedTheme = { ...themeToActivate, isActive: true };

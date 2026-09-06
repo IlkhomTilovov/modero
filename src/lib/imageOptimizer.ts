@@ -1,6 +1,7 @@
 import imageCompression from 'browser-image-compression';
+import { apiUpload } from '@/integrations/api/client';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export interface OptimizedImageSet {
   original: string;
@@ -165,36 +166,31 @@ export async function processImageForUpload(
 }
 
 /**
- * Upload all processed image variants to Supabase Storage
+ * Upload all processed image variants to the backend's /api/uploads endpoint.
  * Returns the base path (without size suffix) for constructing URLs
  */
 export async function uploadOptimizedImages(
-  supabaseClient: any,
-  bucket: string,
   basePath: string,
   processedImages: ProcessedImage[],
   onProgress?: (uploaded: number, total: number) => void
 ): Promise<string> {
   let uploaded = 0;
-  
+
   for (const img of processedImages) {
     const ext = img.format === 'webp' ? 'webp' : img.format === 'png' ? 'png' : 'jpg';
-    const filePath = img.suffix === 'original' 
+    const filePath = img.suffix === 'original'
       ? `${basePath}.${ext}`
       : `${basePath}-${img.width}.${ext}`;
 
-    const { error } = await supabaseClient.storage
-      .from(bucket)
-      .upload(filePath, img.file, { 
-        upsert: true,
-        contentType: img.file.type,
-        cacheControl: '31536000', // 1 year cache
-      });
-
-    if (error) {
-      console.warn(`Upload failed for ${filePath}:`, error.message);
+    try {
+      const formData = new FormData();
+      formData.append('file', img.file);
+      formData.append('path', filePath);
+      await apiUpload('/api/uploads', formData);
+    } catch (error) {
+      console.warn(`Upload failed for ${filePath}:`, error);
     }
-    
+
     uploaded++;
     onProgress?.(uploaded, processedImages.length);
   }
@@ -203,14 +199,14 @@ export async function uploadOptimizedImages(
 }
 
 /**
- * Get the public URL for an optimized image from Supabase Storage
+ * Get the public URL for an optimized image from the backend's local storage.
  */
-export function getStoragePublicUrl(bucket: string, path: string): string {
-  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+export function getStoragePublicUrl(path: string): string {
+  return `${API_BASE_URL}/uploads/${path}`;
 }
 
 /**
- * Given a base image URL from Supabase storage, generate optimized srcSet URLs.
+ * Given a base image URL from our storage, generate optimized srcSet URLs.
  * If the image has optimized variants uploaded, returns proper srcset.
  */
 export function getOptimizedImageUrls(originalUrl: string): {
@@ -219,7 +215,7 @@ export function getOptimizedImageUrls(originalUrl: string): {
   fallbackSrc: string;
   sizes: string;
 } {
-  if (!originalUrl || !originalUrl.includes('/storage/') || originalUrl.startsWith('data:')) {
+  if (!originalUrl || !originalUrl.includes('/uploads/') || originalUrl.startsWith('data:')) {
     return { srcSet: '', webpSrcSet: '', fallbackSrc: originalUrl, sizes: '' };
   }
 

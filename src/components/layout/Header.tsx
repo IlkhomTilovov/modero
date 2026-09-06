@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
-import { useCategories, useSections, type Product } from '@/hooks/useProducts';
-import { supabase } from '@/integrations/supabase/client';
+import { useCategories, useSections, mapApiProduct, type Product } from '@/hooks/useProducts';
+import { apiGet } from '@/integrations/api/client';
 
 const CartDrawer = lazy(() => import('@/components/CartDrawer').then((m) => ({ default: m.CartDrawer })));
 
@@ -51,28 +51,13 @@ export function Header() {
     }
     let cancelled = false;
     (async () => {
-      const [{ data: promo }, { data: fresh }] = await Promise.all([
-        supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .not('original_price', 'is', null)
-          .gt('original_price', 0)
-          .order('created_at', { ascending: false })
-          .limit(4),
-        supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(4),
+      const [promoRes, freshRes] = await Promise.all([
+        apiGet<{ items: any[] }>('/api/products', { discounted: true, pageSize: 4, isActive: true }),
+        apiGet<{ items: any[] }>('/api/products', { pageSize: 4, isActive: true }),
       ]);
       if (cancelled) return;
-      const filteredPromo = (promo || []).filter(
-        (p: any) => p.original_price && p.price && p.original_price > p.price
-      );
-      setPromoProducts(filteredPromo as Product[]);
-      setNewProducts((fresh as Product[]) || []);
+      setPromoProducts(promoRes.items.map(mapApiProduct));
+      setNewProducts(freshRes.items.map(mapApiProduct));
     })();
     return () => {
       cancelled = true;

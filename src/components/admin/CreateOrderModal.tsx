@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -93,15 +93,18 @@ export function CreateOrderModal({ open, onOpenChange, onOrderCreated }: CreateO
   const fetchProducts = async () => {
     setLoadingProducts(true);
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name_uz, name_ru, price, images, in_stock, is_active')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .limit(200);
-
-      if (error) throw error;
-      setProducts(data || []);
+      const { items } = await apiGet<{ items: any[] }>('/api/products', { isActive: true, pageSize: 200 });
+      setProducts(
+        items.map((p) => ({
+          id: p.id,
+          name_uz: p.nameUz,
+          name_ru: p.nameRu,
+          price: p.price,
+          images: p.images,
+          in_stock: p.inStock,
+          is_active: p.isActive,
+        }))
+      );
     } catch (err) {
       console.error('Error fetching products:', err);
     } finally {
@@ -113,16 +116,11 @@ export function CreateOrderModal({ open, onOpenChange, onOrderCreated }: CreateO
     if (customerPhone.length < 9) return;
     setSearchingCustomer(true);
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, phone')
-        .eq('phone', customerPhone)
-        .maybeSingle();
-
-      if (error) throw error;
+      const { items } = await apiGet<{ items: any[] }>('/api/customers', { phone: customerPhone });
+      const data = items[0];
 
       if (data) {
-        setFoundCustomer(data);
+        setFoundCustomer({ id: data.id, name: data.name, phone: data.phone });
         setCustomerName(data.name || '');
         setIsNewCustomer(false);
       } else {
@@ -187,25 +185,16 @@ export function CreateOrderModal({ open, onOpenChange, onOrderCreated }: CreateO
     setSubmitting(true);
 
     try {
-      const response = await supabase.functions.invoke('create-order', {
-        body: {
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone,
-          customer_message: customerMessage || undefined,
-          items: cart.map(item => ({
-            product_id: item.product.id,
-            quantity: item.quantity,
-          })),
-        },
+      const result = await apiPost<{ success: boolean; order_number: string }>('/api/orders', {
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone,
+        customer_message: customerMessage || undefined,
+        items: cart.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })),
       });
 
-      if (response.error) throw response.error;
-
-      const result = response.data;
-      if (!result.success) throw new Error(result.error || 'Xatolik');
-
-      // If it's a new customer, link customer_id to order (already handled by edge function customer creation or we skip)
-      
       toast({
         title: 'Muvaffaqiyat!',
         description: `Buyurtma ${result.order_number} yaratildi`,

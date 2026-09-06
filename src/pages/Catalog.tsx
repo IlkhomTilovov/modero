@@ -13,7 +13,7 @@ import { getPageSeo } from '@/lib/pageSeo';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { CatalogFilterSidebar, SidebarFilters } from '@/components/CatalogFilterSidebar';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 const PAGE_SIZE = 24;
 
@@ -120,14 +120,10 @@ export default function Catalog() {
     if (!setId) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
-        .from('sets')
-        .select('product_ids, title_uz, title_ru, image')
-        .eq('id', setId)
-        .maybeSingle();
+      const { item: data } = await apiGet<{ item: any }>(`/api/sets/${setId}`);
       if (cancelled) return;
-      setSetProductIds((data?.product_ids as string[]) || []);
-      setSetTitle(data ? { uz: data.title_uz, ru: data.title_ru } : null);
+      setSetProductIds((data?.productIds as string[]) || []);
+      setSetTitle(data ? { uz: data.titleUz, ru: data.titleRu } : null);
       setSetImage((data?.image as string) || null);
       setCurrentPage(1);
     })();

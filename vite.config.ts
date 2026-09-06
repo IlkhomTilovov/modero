@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      "/api": { target: "http://localhost:3001", changeOrigin: true },
+      "/uploads": { target: "http://localhost:3001", changeOrigin: true },
+      "/sitemap.xml": { target: "http://localhost:3001", changeOrigin: true },
+    },
   },
   define: {
     __BUILD_ID__: JSON.stringify(String(Date.now())),
@@ -16,6 +21,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@shared": path.resolve(__dirname, "./shared"),
     },
   },
   build: {
@@ -28,7 +34,6 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           "query": ["@tanstack/react-query"],
-          "supabase": ["@supabase/supabase-js"],
           "ui-radix": [
             "@radix-ui/react-dialog",
             "@radix-ui/react-dropdown-menu",

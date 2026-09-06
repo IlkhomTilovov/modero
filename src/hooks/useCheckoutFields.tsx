@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 export interface CheckoutFieldOption {
   id: string;
@@ -23,6 +23,18 @@ export interface CheckoutField {
   options: CheckoutFieldOption[];
 }
 
+function mapOption(o: any): CheckoutFieldOption {
+  return {
+    id: o.id,
+    field_id: o.fieldId,
+    label_uz: o.labelUz,
+    label_ru: o.labelRu,
+    value: o.value,
+    is_active: o.isActive,
+    sort_order: o.sortOrder,
+  };
+}
+
 export function useCheckoutFields() {
   const [fields, setFields] = useState<CheckoutField[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,28 +49,22 @@ export function useCheckoutFields() {
       setLoading(true);
       setError(null);
 
-      // Fetch active fields only
-      const { data: fieldsData, error: fieldsError } = await supabase
-        .from('checkout_fields')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      const [{ items: fieldsData }, { items: optionsData }] = await Promise.all([
+        apiGet<{ items: any[] }>('/api/checkout-fields'),
+        apiGet<{ items: any[] }>('/api/checkout-field-options'),
+      ]);
 
-      if (fieldsError) throw fieldsError;
-
-      // Fetch active options only
-      const { data: optionsData, error: optionsError } = await supabase
-        .from('checkout_field_options')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-      if (optionsError) throw optionsError;
-
-      // Group options by field_id
-      const fieldsWithOptions: CheckoutField[] = (fieldsData || []).map(field => ({
-        ...field,
-        options: (optionsData || []).filter(opt => opt.field_id === field.id),
+      const options = optionsData.map(mapOption);
+      const fieldsWithOptions: CheckoutField[] = fieldsData.map((field) => ({
+        id: field.id,
+        label_uz: field.labelUz,
+        label_ru: field.labelRu,
+        field_type: field.fieldType,
+        icon: field.icon,
+        is_required: field.isRequired,
+        is_active: field.isActive,
+        sort_order: field.sortOrder,
+        options: options.filter((opt) => opt.field_id === field.id),
       }));
 
       setFields(fieldsWithOptions);

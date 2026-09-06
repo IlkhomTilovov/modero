@@ -54,7 +54,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPatch, apiDelete, apiPost } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminT } from '@/hooks/useAdminT';
@@ -85,8 +85,6 @@ interface Order {
 }
 
 interface TelegramSettings {
-  bot_token: string;
-  chat_id: string;
   enabled: boolean;
 }
 
@@ -110,7 +108,7 @@ export default function Orders() {
   const [sendingTelegram, setSendingTelegram] = useState(false);
   const [createOrderOpen, setCreateOrderOpen] = useState(false);
   const { toast } = useToast();
-  const { user, isSeller, isAdmin } = useAuth();
+  const { user } = useAuth();
   const t = useAdminT();
   const { language } = useLanguage();
   const statusLabel = (s: string) => {
@@ -130,18 +128,7 @@ export default function Orders() {
 
   const fetchTelegramSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('key, value')
-        .in('key', ['telegram_bot_token', 'telegram_chat_id', 'telegram_enabled']);
-
-      if (error) throw error;
-
-      const settings: TelegramSettings = {
-        bot_token: data?.find(s => s.key === 'telegram_bot_token')?.value || '',
-        chat_id: data?.find(s => s.key === 'telegram_chat_id')?.value || '',
-        enabled: data?.find(s => s.key === 'telegram_enabled')?.value === 'true',
-      };
+      const settings = await apiGet<TelegramSettings>('/api/admin/telegram/status');
       setTelegramSettings(settings);
     } catch (error) {
       console.error('Error fetching telegram settings:', error);
@@ -151,34 +138,40 @@ export default function Orders() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Seller can only see their own orders
-      if (isSeller && !isAdmin && user) {
-        query = query.eq('created_by_user_id', user.id);
-      }
+      // Server already restricts sellers to their own orders (created_by_user_id).
+      const { items } = await apiGet<{ items: any[] }>('/api/orders');
+      let list = items.map((o) => ({
+        id: o.id,
+        order_number: o.orderNumber,
+        customer_name: o.customerName,
+        customer_phone: o.customerPhone,
+        customer_message: o.customerMessage,
+        status: o.status,
+        total_price: o.totalPrice,
+        created_at: o.createdAt,
+        order_items: (o.items || []).map((i: any) => ({
+          id: i.id,
+          product_name_snapshot: i.productNameSnapshot,
+          selected_options: i.selectedOptions,
+          quantity: i.quantity,
+          price_snapshot: i.priceSnapshot,
+        })),
+      })) as Order[];
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        list = list.filter((o) => o.status === statusFilter);
       }
-
       if (dateFrom) {
-        query = query.gte('created_at', dateFrom);
+        list = list.filter((o) => o.created_at >= dateFrom);
       }
-
       if (dateTo) {
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
-        query = query.lt('created_at', endDate.toISOString().split('T')[0]);
+        const endStr = endDate.toISOString().split('T')[0];
+        list = list.filter((o) => o.created_at < endStr);
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setOrders(data || []);
+      setOrders(list);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
@@ -191,35 +184,14 @@ export default function Orders() {
     }
   };
 
-  const fetchOrderDetails = async (orderId: string) => {
-    try {
-      const { data: orderItems, error } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', orderId);
-
-      if (error) throw error;
-
-      const order = orders.find(o => o.id === orderId);
-      if (order) {
-        setSelectedOrder({
-          ...order,
-          order_items: orderItems as OrderItem[],
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching order details:', error);
-    }
+  const fetchOrderDetails = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order) setSelectedOrder(order);
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
-
-      if (error) throw error;
+      await apiPatch(`/api/orders/${orderId}`, { status: newStatus });
 
       setOrders(prev =>
         prev.map(order =>
@@ -254,18 +226,7 @@ export default function Orders() {
     if (!deleteOrderId) return;
 
     try {
-      // First delete order items
-      await supabase
-        .from('order_items')
-        .delete()
-        .eq('order_id', deleteOrderId);
-
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', deleteOrderId);
-
-      if (error) throw error;
+      await apiDelete(`/api/orders/${deleteOrderId}`);
 
       setOrders(prev => prev.filter(order => order.id !== deleteOrderId));
       setDeleteOrderId(null);
@@ -285,7 +246,7 @@ export default function Orders() {
   };
 
   const sendTelegramNotification = async (order: Order, message?: string) => {
-    if (!telegramSettings?.bot_token || !telegramSettings?.chat_id) {
+    if (!telegramSettings?.enabled) {
       toast({
         title: t.orders.error,
         description: 'Telegram',
@@ -296,44 +257,12 @@ export default function Orders() {
 
     setSendingTelegram(true);
     try {
-      const items = order.order_items?.map(item => 
-        `• ${item.product_name_snapshot} x${item.quantity}${item.price_snapshot ? ` - ${formatPrice(item.price_snapshot)}` : ''}`
-      ).join('\n') || 'Mahsulotlar yo\'q';
+      await apiPost(`/api/orders/${order.id}/notify-telegram`, { statusLabel: message });
 
-      const text = `
-📦 *Buyurtma: ${order.order_number}*
-${message ? `\n📌 ${message}\n` : ''}
-👤 *Mijoz:* ${order.customer_name}
-📞 *Telefon:* ${order.customer_phone}
-📅 *Sana:* ${formatDate(order.created_at)}
-📋 *Status:* ${statusLabel(order.status)}
-
-🛒 *Mahsulotlar:*
-${items}
-${order.total_price ? `\n💰 *Jami:* ${formatPrice(order.total_price)}` : ''}
-${order.customer_message ? `\n💬 *Xabar:* ${order.customer_message}` : ''}
-      `.trim();
-
-      const response = await fetch(`https://api.telegram.org/bot${telegramSettings.bot_token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: telegramSettings.chat_id,
-          text,
-          parse_mode: 'Markdown',
-        }),
+      toast({
+        title: t.orders.success,
+        description: 'Telegram OK',
       });
-
-      const result = await response.json();
-      
-      if (result.ok) {
-        toast({
-          title: t.orders.success,
-          description: 'Telegram OK',
-        });
-      } else {
-        throw new Error(result.description);
-      }
     } catch (error) {
       console.error('Error sending Telegram:', error);
       toast({

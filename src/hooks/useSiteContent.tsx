@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPut, ApiError } from '@/integrations/api/client';
 import { useToast } from './use-toast';
 
 interface ContentItem {
@@ -83,15 +83,19 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
 
   const fetchContent = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('site_content')
-        .select('*');
-
-      if (error) throw error;
+      const { items } = await apiGet<{ items: any[] }>('/api/site-content');
 
       const contentMap: Record<string, ContentItem> = {};
-      data?.forEach((item) => {
-        contentMap[item.key] = item;
+      items.forEach((item) => {
+        contentMap[item.key] = {
+          id: item.id,
+          key: item.key,
+          value_uz: item.valueUz,
+          value_ru: item.valueRu,
+          content_type: item.contentType,
+          page: item.page,
+          section: item.section,
+        };
       });
       setContent(contentMap);
       writeCache(contentMap);
@@ -155,19 +159,14 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   const updateContent = useCallback(async (key: string, language: 'uz' | 'ru', value: string): Promise<boolean> => {
     try {
       const updateField = language === 'uz' ? 'value_uz' : 'value_ru';
-      
-      const { error } = await supabase
-        .from('site_content')
-        .upsert(
-          {
-            key,
-            [updateField]: value,
-            content_type: 'text',
-          },
-          { onConflict: 'key' }
-        );
 
-      if (error) throw error;
+      await apiPut(`/api/site-content/${encodeURIComponent(key)}`, {
+        valueUz: language === 'uz' ? value : content[key]?.value_uz,
+        valueRu: language === 'ru' ? value : content[key]?.value_ru,
+        contentType: content[key]?.content_type || 'text',
+        page: content[key]?.page,
+        section: content[key]?.section,
+      });
 
       // Update local state
       setContent((prev) => ({

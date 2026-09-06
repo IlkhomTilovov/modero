@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPatch, apiDelete } from '@/integrations/api/client';
+import { toSnakeCase } from '@/lib/caseConvert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -31,33 +32,21 @@ export default function Messages() {
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['contact-messages'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contact_messages')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      const { items } = await apiGet<{ items: any[] }>('/api/contact-messages');
+      return toSnakeCase<any[]>(items);
     },
   });
 
   const markAsRead = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('contact_messages')
-        .update({ is_read: true })
-        .eq('id', id);
-      if (error) throw error;
+      await apiPatch(`/api/contact-messages/${id}`, { isRead: true });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact-messages'] }),
   });
 
   const deleteMessage = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('contact_messages')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      await apiDelete(`/api/contact-messages/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contact-messages'] });

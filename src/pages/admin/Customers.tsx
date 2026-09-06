@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Phone, User, FileText, ShoppingBag, Search, MessageCircle, Users, RefreshCw, ArrowUpDown, UserPlus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPatch } from '@/integrations/api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -59,43 +59,18 @@ export default function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      // Get customers
-      const { data: customersData, error: customersError } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { items } = await apiGet<{ items: any[] }>('/api/customers');
 
-      if (customersError) throw customersError;
-
-      // Get all orders with customer info
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select('customer_id, total_price, created_at');
-
-      if (ordersError) throw ordersError;
-
-      // Calculate stats per customer
-      const customerStats: Record<string, { count: number; total: number; lastDate: string | null }> = {};
-      ordersData?.forEach((order) => {
-        if (order.customer_id) {
-          if (!customerStats[order.customer_id]) {
-            customerStats[order.customer_id] = { count: 0, total: 0, lastDate: null };
-          }
-          customerStats[order.customer_id].count += 1;
-          customerStats[order.customer_id].total += order.total_price || 0;
-          
-          if (!customerStats[order.customer_id].lastDate || 
-              new Date(order.created_at) > new Date(customerStats[order.customer_id].lastDate!)) {
-            customerStats[order.customer_id].lastDate = order.created_at;
-          }
-        }
-      });
-
-      const customersWithStats = (customersData || []).map((customer) => ({
-        ...customer,
-        order_count: customerStats[customer.id]?.count || 0,
-        total_spent: customerStats[customer.id]?.total || 0,
-        last_order_date: customerStats[customer.id]?.lastDate || null,
+      const customersWithStats: Customer[] = items.map((c) => ({
+        id: c.id,
+        phone: c.phone,
+        name: c.name,
+        notes: c.notes,
+        created_at: c.createdAt,
+        updated_at: c.updatedAt,
+        order_count: c.orderCount || 0,
+        total_spent: c.totalSpent || 0,
+        last_order_date: c.lastOrderDate || null,
       }));
 
       setCustomers(customersWithStats);
@@ -173,14 +148,18 @@ export default function Customers() {
     setNotes(customer.notes || '');
     setDialogOpen(true);
 
-    const { data, error } = await supabase
-      .from('orders')
-      .select('id, order_number, status, total_price, created_at')
-      .eq('customer_id', customer.id)
-      .order('created_at', { ascending: false });
-
-    if (!error) {
-      setCustomerOrders(data || []);
+    try {
+      const { item } = await apiGet<{ item: any }>(`/api/customers/${customer.id}`);
+      const orders: Order[] = (item?.orders || []).map((o: any) => ({
+        id: o.id,
+        order_number: o.orderNumber,
+        status: o.status,
+        total_price: o.totalPrice,
+        created_at: o.createdAt,
+      }));
+      setCustomerOrders(orders);
+    } catch (error) {
+      console.error('Error fetching customer orders:', error);
     }
   };
 
@@ -188,12 +167,7 @@ export default function Customers() {
     if (!selectedCustomer) return;
 
     try {
-      const { error } = await supabase
-        .from('customers')
-        .update({ notes })
-        .eq('id', selectedCustomer.id);
-
-      if (error) throw error;
+      await apiPatch(`/api/customers/${selectedCustomer.id}`, { notes });
 
       toast({ title: t.customers.success, description: t.customers.noteSaved });
       setCustomers((prev) =>

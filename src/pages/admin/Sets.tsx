@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, X, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload } from '@/integrations/api/client';
+import { toCamelCase } from '@/lib/caseConvert';
 import { useAllSets, type ProductSet } from '@/hooks/useSets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +37,11 @@ export default function SetsAdmin() {
   const [deleting, setDeleting] = useState<ProductSet | null>(null);
 
   useEffect(() => {
-    supabase
-      .from('products')
-      .select('id, name_uz, name_ru, images')
-      .eq('is_active', true)
-      .order('name_uz')
-      .then(({ data }) => setAllProducts((data || []) as ProductLite[]));
+    apiGet<{ items: any[] }>('/api/products', { isActive: true, pageSize: 500 }).then(({ items }) =>
+      setAllProducts(
+        items.map((p) => ({ id: p.id, name_uz: p.nameUz, name_ru: p.nameRu, images: p.images }))
+      )
+    );
   }, []);
 
   const openNew = () => {
@@ -71,11 +71,10 @@ export default function SetsAdmin() {
       // Fayl nomiga tayanmaymiz (bo'sh joy/kirill harflar InvalidKey xatosini beradi)
       const ext = (webp.type.split('/')[1] || 'webp').replace(/[^a-z0-9]/gi, '') || 'webp';
       const path = `sets/set-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(path, webp, { contentType: webp.type, upsert: true, cacheControl: '31536000' });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path);
+      const formData = new FormData();
+      formData.append('file', webp);
+      formData.append('path', path);
+      const { url: publicUrl } = await apiUpload<{ url: string }>('/api/uploads', formData);
       setForm(f => ({ ...f, image: publicUrl }));
       toast.success(t.imageUploaded);
     } catch (err: any) {
@@ -86,24 +85,27 @@ export default function SetsAdmin() {
   const save = async () => {
     if (!form.title_uz.trim() || !form.title_ru.trim()) { toast.error(t.fillTitles); return; }
     if (!form.image) { toast.error(t.uploadImageError); return; }
-    const payload = { ...form, image: form.image || null, href: form.href || '/catalog' };
-    const res = editing
-      ? await supabase.from('sets').update(payload).eq('id', editing.id)
-      : await supabase.from('sets').insert(payload);
-    if (res.error) { toast.error(res.error.message); return; }
+    const payload = toCamelCase({ ...form, image: form.image || null, href: form.href || '/catalog' });
+    try {
+      if (editing) await apiPatch(`/api/sets/${editing.id}`, payload);
+      else await apiPost('/api/sets', payload);
+    } catch (err: any) {
+      toast.error(err.message);
+      return;
+    }
     toast.success(editing ? t.updated : t.added);
     setOpen(false);
     refetch();
   };
 
   const toggleActive = async (s: ProductSet) => {
-    await supabase.from('sets').update({ is_active: !s.is_active }).eq('id', s.id);
+    await apiPatch(`/api/sets/${s.id}`, { isActive: !s.is_active });
     refetch();
   };
 
   const confirmRemove = async () => {
     if (!deleting) return;
-    await supabase.from('sets').delete().eq('id', deleting.id);
+    await apiDelete(`/api/sets/${deleting.id}`);
     toast.success(t.deleted);
     setDeleting(null);
     refetch();

@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://orsihome.uz/sitemap.xml
+Sitemap: https://moredo.uz/sitemap.xml

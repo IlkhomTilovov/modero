@@ -14,7 +14,8 @@ import {
   X,
   Loader2
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete, apiUpload } from '@/integrations/api/client';
+import { toCamelCase, toSnakeCase } from '@/lib/caseConvert';
 import { convertImageToWebP } from '@/lib/imageToWebp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,15 +158,10 @@ export default function Categories() {
       const fileName = `category-${Date.now()}.${fileExt}`;
       const filePath = `categories/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, uploadFile, { contentType: uploadFile.type });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
+      const formData2 = new FormData();
+      formData2.append('file', uploadFile);
+      formData2.append('path', filePath);
+      const { url: publicUrl } = await apiUpload<{ url: string }>('/api/uploads', formData2);
 
       setFormData(prev => ({ ...prev, image: publicUrl }));
       toast({ title: t.categories.success, description: t.categories.imageUploaded });
@@ -187,37 +183,22 @@ export default function Categories() {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      setCategories(data || []);
+      const { items } = await apiGet<{ items: any[] }>('/api/categories/admin');
+      setCategories(toSnakeCase<Category[]>(items));
 
       // Fetch active sections
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from('sections')
-        .select('id, name_uz, name_ru, slug, sort_order, is_active')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      const { items: sectionsData } = await apiGet<{ items: any[] }>('/api/sections');
+      setSections(toSnakeCase<Section[]>(sectionsData));
 
-      if (!sectionsError) setSections(sectionsData || []);
-
-      // Fetch product counts per category
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('category_id');
-
-      if (!productsError && products) {
-        const counts: Record<string, number> = {};
-        products.forEach((p) => {
-          if (p.category_id) {
-            counts[p.category_id] = (counts[p.category_id] || 0) + 1;
-          }
-        });
-        setProductCounts(counts);
-      }
+      // Fetch product counts per category (all products, regardless of active status)
+      const { items: products } = await apiGet<{ items: any[] }>('/api/products', { all: true, pageSize: 1000 });
+      const counts: Record<string, number> = {};
+      products.forEach((p) => {
+        if (p.categoryId) {
+          counts[p.categoryId] = (counts[p.categoryId] || 0) + 1;
+        }
+      });
+      setProductCounts(counts);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast({ variant: 'destructive', title: t.categories.error, description: t.categories.loadError });
@@ -248,17 +229,7 @@ export default function Categories() {
   };
 
   const checkSlugUnique = async (slug: string, excludeId?: string): Promise<boolean> => {
-    const query = supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', slug);
-    
-    if (excludeId) {
-      query.neq('id', excludeId);
-    }
-
-    const { data } = await query;
-    return !data || data.length === 0;
+    return !categories.some((c) => c.slug === slug && c.id !== excludeId);
   };
 
   const openCreateDialog = () => {
@@ -360,19 +331,10 @@ export default function Categories() {
       };
 
       if (selectedCategory) {
-        const { error } = await supabase
-          .from('categories')
-          .update(categoryData)
-          .eq('id', selectedCategory.id);
-
-        if (error) throw error;
+        await apiPatch(`/api/categories/${selectedCategory.id}`, toCamelCase(categoryData));
         toast({ title: t.categories.success, description: t.categories.updated });
       } else {
-        const { error } = await supabase
-          .from('categories')
-          .insert([categoryData]);
-
-        if (error) throw error;
+        await apiPost('/api/categories', toCamelCase(categoryData));
         toast({ title: t.categories.success, description: t.categories.created });
       }
 
@@ -403,12 +365,7 @@ export default function Categories() {
     }
 
     try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', selectedCategory.id);
-
-      if (error) throw error;
+      await apiDelete(`/api/categories/${selectedCategory.id}`);
       toast({ title: t.categories.success, description: t.categories.deleted });
       setDeleteDialogOpen(false);
       fetchCategories();
@@ -419,12 +376,7 @@ export default function Categories() {
 
   const toggleStatus = async (category: Category) => {
     try {
-      const { error } = await supabase
-        .from('categories')
-        .update({ is_active: !category.is_active })
-        .eq('id', category.id);
-
-      if (error) throw error;
+      await apiPatch(`/api/categories/${category.id}`, { isActive: !category.is_active });
       fetchCategories();
       toast({ 
         title: t.categories.success, 

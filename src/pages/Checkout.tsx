@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCheckoutFields, CheckoutField } from '@/hooks/useCheckoutFields';
-import { supabase } from '@/integrations/supabase/client';
+import { apiPost, ApiError } from '@/integrations/api/client';
 import { toast } from '@/hooks/use-toast';
 
 // Icon mapping for dynamic fields
@@ -162,30 +162,15 @@ export default function Checkout() {
         return;
       }
 
-      const { data: orderResult, error: orderError } = await supabase.functions.invoke('create-order', {
-        body: {
+      const orderResult = await apiPost<{ success: boolean; order_number: string; total_price: number }>(
+        '/api/orders',
+        {
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_message: customerMessage,
           items: orderItems,
-        },
-      });
-
-      if (orderError) {
-        // Extract actual error message from edge function response
-        let errorMessage = language === 'uz' ? 'Buyurtma yaratishda xatolik' : 'Ошибка при создании заказа';
-        try {
-          if (orderError.context?.body) {
-            const body = await new Response(orderError.context.body).json();
-            if (body?.error) errorMessage = body.error;
-          }
-        } catch {}
-        throw new Error(errorMessage);
-      }
-      
-      if (orderResult && !orderResult.success) {
-        throw new Error(orderResult.error || 'Buyurtma yaratishda xatolik');
-      }
+        }
+      );
 
       clearCart();
       navigate('/thank-you', { state: { orderNumber: orderResult.order_number } });

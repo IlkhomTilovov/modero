@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search, AlertTriangle, LayoutGrid, GripVertical } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/integrations/api/client';
+import { toCamelCase, toSnakeCase } from '@/lib/caseConvert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,28 +64,18 @@ export default function Sections() {
 
   const fetchSections = async () => {
     try {
-      const { data, error } = await supabase
-        .from('sections')
-        .select('*')
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      setSections(data || []);
+      const { items } = await apiGet<{ items: any[] }>('/api/sections/admin');
+      setSections(toSnakeCase<Section[]>(items));
 
       // Count categories per section
-      const { data: categories, error: catError } = await supabase
-        .from('categories')
-        .select('section_id');
-
-      if (!catError && categories) {
-        const counts: Record<string, number> = {};
-        categories.forEach((c) => {
-          if (c.section_id) {
-            counts[c.section_id] = (counts[c.section_id] || 0) + 1;
-          }
-        });
-        setCategoryCounts(counts);
-      }
+      const { items: categories } = await apiGet<{ items: any[] }>('/api/categories/admin');
+      const counts: Record<string, number> = {};
+      categories.forEach((c) => {
+        if (c.sectionId) {
+          counts[c.sectionId] = (counts[c.sectionId] || 0) + 1;
+        }
+      });
+      setCategoryCounts(counts);
     } catch (error: any) {
       console.error('Error fetching sections:', error);
       toast({ variant: 'destructive', title: t.sections.error, description: t.sections.loadError });
@@ -114,10 +105,7 @@ export default function Sections() {
   };
 
   const checkSlugUnique = async (slug: string, excludeId?: string): Promise<boolean> => {
-    const query = supabase.from('sections').select('id').eq('slug', slug);
-    if (excludeId) query.neq('id', excludeId);
-    const { data } = await query;
-    return !data || data.length === 0;
+    return !sections.some((s) => s.slug === slug && s.id !== excludeId);
   };
 
   const openCreateDialog = () => {
@@ -182,12 +170,10 @@ export default function Sections() {
       };
 
       if (selectedSection) {
-        const { error } = await supabase.from('sections').update(sectionData).eq('id', selectedSection.id);
-        if (error) throw error;
+        await apiPatch(`/api/sections/${selectedSection.id}`, toCamelCase(sectionData));
         toast({ title: t.sections.success, description: t.sections.updated });
       } else {
-        const { error } = await supabase.from('sections').insert([sectionData]);
-        if (error) throw error;
+        await apiPost('/api/sections', toCamelCase(sectionData));
         toast({ title: t.sections.success, description: t.sections.created });
       }
 
@@ -217,8 +203,7 @@ export default function Sections() {
     }
 
     try {
-      const { error } = await supabase.from('sections').delete().eq('id', selectedSection.id);
-      if (error) throw error;
+      await apiDelete(`/api/sections/${selectedSection.id}`);
       toast({ title: t.sections.success, description: t.sections.deleted });
       setDeleteDialogOpen(false);
       fetchSections();
@@ -229,8 +214,7 @@ export default function Sections() {
 
   const toggleStatus = async (section: Section) => {
     try {
-      const { error } = await supabase.from('sections').update({ is_active: !section.is_active }).eq('id', section.id);
-      if (error) throw error;
+      await apiPatch(`/api/sections/${section.id}`, { isActive: !section.is_active });
       fetchSections();
       toast({ title: t.sections.success, description: t.sections.toggled(!section.is_active) });
     } catch (error: any) {

@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 import { useTheme } from '@/hooks/useTheme';
 import { useAdminT } from '@/hooks/useAdminT';
 
@@ -96,36 +96,42 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const { items } = await apiGet<{ items: any[] }>('/api/orders');
+      const orders = items
+        .map((o) => ({
+          id: o.id,
+          order_number: o.orderNumber,
+          customer_name: o.customerName,
+          customer_phone: o.customerPhone,
+          status: o.status,
+          created_at: o.createdAt,
+          total_price: o.totalPrice,
+        }))
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const orderStats: OrderStats = {
-        total: orders?.length || 0,
-        new: orders?.filter(o => o.status === 'new').length || 0,
-        inProgress: orders?.filter(o => o.status === 'in_progress').length || 0,
-        completed: orders?.filter(o => o.status === 'completed').length || 0,
-        cancelled: orders?.filter(o => o.status === 'cancelled').length || 0,
-        todayNew: orders?.filter(o => {
+        total: orders.length,
+        new: orders.filter(o => o.status === 'new').length,
+        inProgress: orders.filter(o => o.status === 'in_progress').length,
+        completed: orders.filter(o => o.status === 'completed').length,
+        cancelled: orders.filter(o => o.status === 'cancelled').length,
+        todayNew: orders.filter(o => {
           const orderDate = new Date(o.created_at);
           orderDate.setHours(0, 0, 0, 0);
           return orderDate.getTime() === today.getTime() && o.status === 'new';
-        }).length || 0,
-        todayTotal: orders?.filter(o => {
+        }).length,
+        todayTotal: orders.filter(o => {
           const orderDate = new Date(o.created_at);
           orderDate.setHours(0, 0, 0, 0);
           return orderDate.getTime() === today.getTime();
-        }).length || 0,
+        }).length,
       };
 
       setStats(orderStats);
-      setRecentOrders((orders || []).slice(0, 10));
+      setRecentOrders(orders.slice(0, 10));
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -133,38 +139,19 @@ export default function Dashboard() {
 
   const fetchSystemStatus = async () => {
     try {
-      // Fetch telegram enabled setting
-      const { data: telegramData } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'telegram_enabled')
-        .maybeSingle();
-
-      const telegramEnabled = telegramData?.value === 'true';
-
-      // Fetch system settings
-      const { data: systemData } = await supabase
-        .from('system_settings')
-        .select('languages_enabled')
-        .limit(1)
-        .maybeSingle();
-
-      // Fetch products count
-      const { count: productsCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch categories count
-      const { count: categoriesCount } = await supabase
-        .from('categories')
-        .select('*', { count: 'exact', head: true });
+      const [telegram, systemSettings, products, categories] = await Promise.all([
+        apiGet<{ enabled: boolean }>('/api/admin/telegram/status').catch(() => ({ enabled: false })),
+        apiGet<{ item: any }>('/api/system-settings').catch(() => ({ item: null })),
+        apiGet<{ total: number }>('/api/products', { pageSize: 1 }).catch(() => ({ total: 0 })),
+        apiGet<{ items: any[] }>('/api/categories').catch(() => ({ items: [] })),
+      ]);
 
       setSystemStatus({
-        telegramEnabled,
+        telegramEnabled: telegram.enabled,
         activeTheme: currentTheme?.name || null,
-        enabledLanguages: systemData?.languages_enabled || ['uz', 'ru'],
-        totalProducts: productsCount || 0,
-        totalCategories: categoriesCount || 0,
+        enabledLanguages: systemSettings.item?.languagesEnabled || ['uz', 'ru'],
+        totalProducts: products.total || 0,
+        totalCategories: categories.items.length || 0,
       });
     } catch (error) {
       console.error('Error fetching system status:', error);

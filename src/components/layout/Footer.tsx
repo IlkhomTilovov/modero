@@ -5,7 +5,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { EditableText } from '@/components/EditableText';
 import { EditableLink } from '@/components/EditableLink';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet } from '@/integrations/api/client';
 
 export function Footer() {
   const { language } = useLanguage();
@@ -16,12 +16,8 @@ export function Footer() {
   const { data: categories } = useQuery({
     queryKey: ['footer-categories'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('categories')
-        .select('id, name_uz, name_ru, slug')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-      return data || [];
+      const { items } = await apiGet<{ items: any[] }>('/api/categories');
+      return items;
     },
   });
 

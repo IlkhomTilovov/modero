@@ -45,7 +45,7 @@ export function EditableImage({
 
   // Get image URL from content or use fallback.
   // IMPORTANT for LCP: while content is loading, render fallback immediately
-  // (do NOT block on Supabase content query) — this drops LCP dramatically
+  // (do NOT block on the site-content API call) — this drops LCP dramatically
   // for above-the-fold images like the hero.
   const currentSrc = getContent(contentKey, 'uz', '') || fallbackSrc;
   const isSelected = selectedElement?.contentKey === contentKey;

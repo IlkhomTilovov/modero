@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
+import { apiGet, apiPost, apiPatch } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminT } from '@/hooks/useAdminT';
 
@@ -29,17 +29,16 @@ function ChannelCatalogPost({ webappUrl, defaultButton, shortName }: { webappUrl
     }
     setSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-telegram', {
-        body: {
-          type: 'post_channel_button',
+      const data = await apiPost<{ success: boolean; pinned?: boolean; error?: string }>(
+        '/api/admin/telegram/post-channel-button',
+        {
           webapp_url: webappUrl,
           webapp_button_text: buttonText,
           webapp_short_name: shortName,
           post_text: text,
           pin,
-        },
-      });
-      if (error) throw error;
+        }
+      );
       if (!data?.success) throw new Error(data?.error || t.sendError);
       toast({
         title: t.sent,
@@ -125,7 +124,7 @@ export default function Settings() {
   const [webapp, setWebapp] = useState<WebAppSettings>({
     url: typeof window !== 'undefined' ? window.location.origin : '',
     button_text: t.openShopBtn,
-    short_name: 't.me/orsihomebot/katalog',
+    short_name: 't.me/moredobot/katalog',
   });
 
   const [savingWebapp, setSavingWebapp] = useState(false);
@@ -183,10 +182,10 @@ export default function Settings() {
       setConnectingAmocrm(true);
       try {
         const redirect_uri = `${window.location.origin}/admin/settings`;
-        const { data, error } = await supabase.functions.invoke('amocrm-connect', {
-          body: { code, redirect_uri },
+        const data = await apiPost<{ success: boolean; error?: string }>('/api/admin/amocrm/connect', {
+          code,
+          redirect_uri,
         });
-        if (error) throw error;
         if (!data?.success) throw new Error(data?.error || t.amocrmConnectError);
         toast({ title: t.successTitle, description: t.amocrmConnected });
         await fetchSettings();
@@ -203,15 +202,11 @@ export default function Settings() {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*');
-
-      if (error) throw error;
+      const { settings: raw } = await apiGet<{ settings: Record<string, string | null> }>('/api/admin/settings');
 
       const settings: Record<string, string> = {};
-      data?.forEach(item => {
-        settings[item.key] = item.value || '';
+      Object.entries(raw).forEach(([key, value]) => {
+        settings[key] = value || '';
       });
 
       setTelegram({
@@ -252,32 +247,13 @@ export default function Settings() {
 
     setSaving(true);
     try {
-      const updates = [
-        { key: 'telegram_bot_token', value: telegram.bot_token },
-        { key: 'telegram_chat_id', value: telegram.chat_id },
-        { key: 'telegram_enabled', value: telegram.enabled.toString() },
-      ];
-
-      for (const update of updates) {
-        const { data: existing } = await supabase
-          .from('settings')
-          .select('id')
-          .eq('key', update.key)
-          .single();
-
-        if (existing) {
-          const { error } = await supabase
-            .from('settings')
-            .update({ value: update.value, updated_at: new Date().toISOString() })
-            .eq('key', update.key);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('settings')
-            .insert({ key: update.key, value: update.value });
-          if (error) throw error;
-        }
-      }
+      await apiPatch('/api/admin/settings', {
+        settings: {
+          telegram_bot_token: telegram.bot_token,
+          telegram_chat_id: telegram.chat_id,
+          telegram_enabled: telegram.enabled.toString(),
+        },
+      });
 
       toast({ title: t.successTitle, description: t.settingsSaved });
     } catch (error) {
@@ -305,11 +281,7 @@ export default function Settings() {
     setTestResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('send-telegram', {
-        body: { type: 'test' },
-      });
-
-      if (error) throw error;
+      const data = await apiPost<{ success: boolean; error?: string }>('/api/admin/telegram/test');
 
       if (data?.success) {
         setTestResult('success');
@@ -326,21 +298,7 @@ export default function Settings() {
   };
 
   const upsertSetting = async (key: string, value: string) => {
-    const { data: existing } = await supabase
-      .from('settings')
-      .select('id')
-      .eq('key', key)
-      .maybeSingle();
-    if (existing) {
-      const { error } = await supabase
-        .from('settings')
-        .update({ value, updated_at: new Date().toISOString() })
-        .eq('key', key);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('settings').insert({ key, value });
-      if (error) throw error;
-    }
+    await apiPatch('/api/admin/settings', { settings: { [key]: value } });
   };
 
   const saveAndConnectWebApp = async () => {
@@ -361,15 +319,14 @@ export default function Settings() {
       await upsertSetting('telegram_webapp_short_name', webapp.short_name.trim());
       await upsertSetting('telegram_bot_token', telegram.bot_token);
 
-      const { data, error } = await supabase.functions.invoke('send-telegram', {
-        body: {
-          type: 'setup_webapp',
+      const data = await apiPost<{ success: boolean; error?: string; bot?: { username?: string } }>(
+        '/api/admin/telegram/setup-webapp',
+        {
           webapp_url: url,
           webapp_button_text: webapp.button_text,
           webapp_short_name: webapp.short_name,
-        },
-      });
-      if (error) throw error;
+        }
+      );
       if (!data?.success) throw new Error(data?.error || t.connectError);
 
       setBotInfo({ username: data.bot?.username });
@@ -467,9 +424,8 @@ export default function Settings() {
     setTestingAmocrm(true);
     setAmocrmTestResult(null);
     try {
-      const { data, error } = await supabase.rpc('amocrm_test_lead');
-      if (error) throw error;
-      if (!(data as any)?.success) throw new Error((data as any)?.error || t.amocrmTestError);
+      const data = await apiPost<{ success: boolean; error?: string }>('/api/admin/amocrm/test');
+      if (!data?.success) throw new Error(data?.error || t.amocrmTestError);
       setAmocrmTestResult('success');
       toast({ title: t.successTitle, description: t.amocrmTestSuccess });
     } catch (err: any) {

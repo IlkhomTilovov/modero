@@ -597,7 +597,7 @@ export const adminTranslations = {
       infoTitle: "Mavzu ma'lumotlari",
       infoSubtitle: 'Nom va asosiy sozlamalar',
       themeName: 'Mavzu nomi',
-      namePlaceholder: 'Masalan: OrsiHome Premium',
+      namePlaceholder: 'Masalan: Moredo Premium',
       darkMode: "Qorong'i rejim",
       darkModeSub: 'Mavzu turini belgilash',
       colorsTitle: 'Ranglar tizimi',
@@ -730,8 +730,8 @@ export const adminTranslations = {
       webAppUrlHint: 'Tavsiya',
       buttonText: 'Tugma matni',
       webAppShortName: 'Direct Link short name',
-      webAppShortNamePlaceholder: "catalog yoki t.me/orsihomebot/katalog",
-      webAppShortNameHint: "BotFather → /myapps orqali yaratilgan Mini App short name. Masalan: catalog. Yoki to'liq link: t.me/orsihomebot/katalog. Shu bo'lmasa kanal tugmasi Mini App emas, oddiy sayt linki bo'lib ochiladi.",
+      webAppShortNamePlaceholder: "catalog yoki t.me/moredobot/katalog",
+      webAppShortNameHint: "BotFather → /myapps orqali yaratilgan Mini App short name. Masalan: catalog. Yoki to'liq link: t.me/moredobot/katalog. Shu bo'lmasa kanal tugmasi Mini App emas, oddiy sayt linki bo'lib ochiladi.",
 
 
       openShopBtn: "Do'konni ochish",
@@ -1487,7 +1487,7 @@ export const adminTranslations = {
       infoTitle: 'Информация о теме',
       infoSubtitle: 'Название и основные настройки',
       themeName: 'Название темы',
-      namePlaceholder: 'Например: OrsiHome Premium',
+      namePlaceholder: 'Например: Moredo Premium',
       darkMode: 'Тёмный режим',
       darkModeSub: 'Определить тип темы',
       colorsTitle: 'Цветовая схема',
@@ -1620,8 +1620,8 @@ export const adminTranslations = {
       webAppUrlHint: 'Рекомендуется',
       buttonText: 'Текст кнопки',
       webAppShortName: 'Direct Link short name',
-      webAppShortNamePlaceholder: 'catalog или t.me/orsihomebot/katalog',
-      webAppShortNameHint: 'Short name Mini App из BotFather → /myapps. Например: catalog. Или полная ссылка: t.me/orsihomebot/katalog. Без него кнопка в канале откроется как обычная ссылка, не как Mini App.',
+      webAppShortNamePlaceholder: 'catalog или t.me/moredobot/katalog',
+      webAppShortNameHint: 'Short name Mini App из BotFather → /myapps. Например: catalog. Или полная ссылка: t.me/moredobot/katalog. Без него кнопка в канале откроется как обычная ссылка, не как Mini App.',
 
 
       openShopBtn: 'Открыть магазин',
