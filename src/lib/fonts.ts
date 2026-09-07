@@ -76,6 +76,69 @@ const FONT_LOADERS: Record<string, FontLoader> = {
       import('@fontsource/oswald/600.css'),
       import('@fontsource/oswald/700.css'),
     ]),
+  Poppins: () =>
+    Promise.all([
+      import('@fontsource/poppins/400.css'),
+      import('@fontsource/poppins/500.css'),
+      import('@fontsource/poppins/600.css'),
+      import('@fontsource/poppins/700.css'),
+    ]),
+  Raleway: () =>
+    Promise.all([
+      import('@fontsource/raleway/400.css'),
+      import('@fontsource/raleway/500.css'),
+      import('@fontsource/raleway/600.css'),
+      import('@fontsource/raleway/700.css'),
+    ]),
+  Merriweather: () =>
+    Promise.all([
+      import('@fontsource/merriweather/400.css'),
+      import('@fontsource/merriweather/500.css'),
+      import('@fontsource/merriweather/600.css'),
+      import('@fontsource/merriweather/700.css'),
+    ]),
+  'PT Serif': () =>
+    Promise.all([import('@fontsource/pt-serif/400.css'), import('@fontsource/pt-serif/700.css')]),
+  'Cormorant Garamond': () =>
+    Promise.all([
+      import('@fontsource/cormorant-garamond/400.css'),
+      import('@fontsource/cormorant-garamond/500.css'),
+      import('@fontsource/cormorant-garamond/600.css'),
+      import('@fontsource/cormorant-garamond/700.css'),
+    ]),
+  'DM Sans': () =>
+    Promise.all([
+      import('@fontsource/dm-sans/400.css'),
+      import('@fontsource/dm-sans/500.css'),
+      import('@fontsource/dm-sans/600.css'),
+      import('@fontsource/dm-sans/700.css'),
+    ]),
+  'Libre Baskerville': () =>
+    Promise.all([
+      import('@fontsource/libre-baskerville/400.css'),
+      import('@fontsource/libre-baskerville/700.css'),
+    ]),
+  'Josefin Sans': () =>
+    Promise.all([
+      import('@fontsource/josefin-sans/400.css'),
+      import('@fontsource/josefin-sans/500.css'),
+      import('@fontsource/josefin-sans/600.css'),
+      import('@fontsource/josefin-sans/700.css'),
+    ]),
+  Quicksand: () =>
+    Promise.all([
+      import('@fontsource/quicksand/400.css'),
+      import('@fontsource/quicksand/500.css'),
+      import('@fontsource/quicksand/600.css'),
+      import('@fontsource/quicksand/700.css'),
+    ]),
+  'Space Grotesk': () =>
+    Promise.all([
+      import('@fontsource/space-grotesk/400.css'),
+      import('@fontsource/space-grotesk/500.css'),
+      import('@fontsource/space-grotesk/600.css'),
+      import('@fontsource/space-grotesk/700.css'),
+    ]),
 };
 
 const loadedFonts = new Set<string>();

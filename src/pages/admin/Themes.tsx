@@ -32,6 +32,16 @@ const FONT_OPTIONS = [
   { value: "'Bebas Neue', sans-serif", label: "Bebas Neue" },
   { value: "'Rubik', system-ui, sans-serif", label: "Rubik" },
   { value: "'Oswald', sans-serif", label: "Oswald" },
+  { value: "'Poppins', system-ui, sans-serif", label: "Poppins" },
+  { value: "'Raleway', system-ui, sans-serif", label: "Raleway" },
+  { value: "'Merriweather', Georgia, serif", label: "Merriweather" },
+  { value: "'PT Serif', Georgia, serif", label: "PT Serif" },
+  { value: "'Cormorant Garamond', Georgia, serif", label: "Cormorant Garamond" },
+  { value: "'DM Sans', system-ui, sans-serif", label: "DM Sans" },
+  { value: "'Libre Baskerville', Georgia, serif", label: "Libre Baskerville" },
+  { value: "'Josefin Sans', system-ui, sans-serif", label: "Josefin Sans" },
+  { value: "'Quicksand', system-ui, sans-serif", label: "Quicksand" },
+  { value: "'Space Grotesk', system-ui, sans-serif", label: "Space Grotesk" },
 ];
 
 const RADIUS_OPTIONS = [
