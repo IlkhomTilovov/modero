@@ -48,6 +48,7 @@ EOF
 chmod 600 "${APP_DIR}/server/.env"
 
 echo "== Nginx site =="
+cp "$(dirname "$0")/nginx-bot-map.conf" /etc/nginx/conf.d/moredo-bot-map.conf
 cp "$(dirname "$0")/nginx-moredo.conf" /etc/nginx/sites-available/moredo.conf
 ln -sf /etc/nginx/sites-available/moredo.conf /etc/nginx/sites-enabled/moredo.conf
 rm -f /etc/nginx/sites-enabled/default

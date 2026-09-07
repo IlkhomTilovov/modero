@@ -25,6 +25,7 @@ import { amocrmRouter } from './routes/amocrm.routes';
 import { telegramRouter } from './routes/telegram.routes';
 import { uploadsRouter } from './routes/uploads.routes';
 import { sitemapRouter } from './routes/sitemap.routes';
+import { prerenderRouter } from './routes/prerender.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -36,6 +37,7 @@ app.use(express.json());
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), { maxAge: '1y', immutable: true }));
 app.use(sitemapRouter);
+app.use(prerenderRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
