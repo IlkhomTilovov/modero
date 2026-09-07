@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Theme-driven Design System — Manrope as the global typeface (loaded via index.html). */
+/* Theme-driven Design System — Manrope as the global typeface (self-hosted via @fontsource, loaded in main.tsx). */
 
 @layer base {
   * {

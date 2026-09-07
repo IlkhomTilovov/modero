@@ -1,0 +1,97 @@
+// Self-hosted Google Fonts (via @fontsource) — no requests to fonts.googleapis.com.
+// Each loader pulls only the weights the UI actually uses, and is only invoked
+// for the font family that's actually active, so unused fonts never ship.
+type FontLoader = () => Promise<unknown>;
+
+const FONT_LOADERS: Record<string, FontLoader> = {
+  Manrope: () =>
+    Promise.all([
+      import('@fontsource/manrope/300.css'),
+      import('@fontsource/manrope/400.css'),
+      import('@fontsource/manrope/500.css'),
+      import('@fontsource/manrope/600.css'),
+      import('@fontsource/manrope/700.css'),
+      import('@fontsource/manrope/800.css'),
+    ]),
+  Inter: () =>
+    Promise.all([
+      import('@fontsource/inter/400.css'),
+      import('@fontsource/inter/500.css'),
+      import('@fontsource/inter/600.css'),
+      import('@fontsource/inter/700.css'),
+    ]),
+  'Playfair Display': () =>
+    Promise.all([
+      import('@fontsource/playfair-display/400.css'),
+      import('@fontsource/playfair-display/500.css'),
+      import('@fontsource/playfair-display/600.css'),
+      import('@fontsource/playfair-display/700.css'),
+    ]),
+  Roboto: () =>
+    Promise.all([
+      import('@fontsource/roboto/400.css'),
+      import('@fontsource/roboto/500.css'),
+      import('@fontsource/roboto/700.css'),
+    ]),
+  Montserrat: () =>
+    Promise.all([
+      import('@fontsource/montserrat/400.css'),
+      import('@fontsource/montserrat/500.css'),
+      import('@fontsource/montserrat/600.css'),
+      import('@fontsource/montserrat/700.css'),
+    ]),
+  Lora: () =>
+    Promise.all([
+      import('@fontsource/lora/400.css'),
+      import('@fontsource/lora/500.css'),
+      import('@fontsource/lora/600.css'),
+      import('@fontsource/lora/700.css'),
+    ]),
+  'Nunito Sans': () =>
+    Promise.all([
+      import('@fontsource/nunito-sans/400.css'),
+      import('@fontsource/nunito-sans/500.css'),
+      import('@fontsource/nunito-sans/600.css'),
+      import('@fontsource/nunito-sans/700.css'),
+    ]),
+  'Work Sans': () =>
+    Promise.all([
+      import('@fontsource/work-sans/400.css'),
+      import('@fontsource/work-sans/500.css'),
+      import('@fontsource/work-sans/600.css'),
+      import('@fontsource/work-sans/700.css'),
+    ]),
+  'Bebas Neue': () => import('@fontsource/bebas-neue/400.css'),
+  Rubik: () =>
+    Promise.all([
+      import('@fontsource/rubik/400.css'),
+      import('@fontsource/rubik/500.css'),
+      import('@fontsource/rubik/600.css'),
+      import('@fontsource/rubik/700.css'),
+    ]),
+  Oswald: () =>
+    Promise.all([
+      import('@fontsource/oswald/400.css'),
+      import('@fontsource/oswald/500.css'),
+      import('@fontsource/oswald/600.css'),
+      import('@fontsource/oswald/700.css'),
+    ]),
+};
+
+const loadedFonts = new Set<string>();
+
+function extractFontName(fontFamilyCss: string): string {
+  return fontFamilyCss.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+}
+
+export function loadWebFont(fontFamilyCss?: string | null): void {
+  if (!fontFamilyCss) return;
+  const name = extractFontName(fontFamilyCss);
+  if (loadedFonts.has(name)) return;
+  const loader = FONT_LOADERS[name];
+  if (!loader) return;
+  loadedFonts.add(name);
+  loader().catch(() => {
+    loadedFonts.delete(name);
+  });
+}

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { apiGet, apiPost } from '@/integrations/api/client';
 import { Theme } from '@/lib/themes';
+import { loadWebFont } from '@/lib/fonts';
 
 const THEME_CACHE_KEY = 'furniture-active-theme';
 const THEME_READY_KEY = 'furniture-theme-ready';
@@ -129,9 +130,15 @@ export const applyThemeToDocument = (theme: Theme) => {
   });
 
   const fallback = 'system-ui, sans-serif';
-  root.style.setProperty('--font-sans', theme.typography?.fontSans || `Manrope, ${fallback}`);
-  root.style.setProperty('--font-serif', theme.typography?.fontSerif || theme.typography?.fontSans || `Manrope, ${fallback}`);
-  root.style.setProperty('--font-heading', theme.typography?.fontHeading || theme.typography?.fontSans || `Manrope, ${fallback}`);
+  const fontSans = theme.typography?.fontSans || `Manrope, ${fallback}`;
+  const fontSerif = theme.typography?.fontSerif || theme.typography?.fontSans || `Manrope, ${fallback}`;
+  const fontHeading = theme.typography?.fontHeading || theme.typography?.fontSans || `Manrope, ${fallback}`;
+  root.style.setProperty('--font-sans', fontSans);
+  root.style.setProperty('--font-serif', fontSerif);
+  root.style.setProperty('--font-heading', fontHeading);
+  loadWebFont(fontSans);
+  loadWebFont(fontSerif);
+  loadWebFont(fontHeading);
 
 
   root.style.setProperty('--radius', theme.componentStyles.borderRadius);

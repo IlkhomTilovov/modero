@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { apiPost, apiPatch, apiDelete } from '@/integrations/api/client';
 import { toCamelCase } from '@/lib/caseConvert';
 import { useAdminT } from '@/hooks/useAdminT';
+import { loadWebFont } from '@/lib/fonts';
 
 const FONT_OPTIONS = [
   { value: "'Inter', system-ui, sans-serif", label: "Inter" },
@@ -300,6 +301,12 @@ const Themes = () => {
   
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'light' | 'dark'>('all');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+
+  // Load every selectable font once so dropdown items, the live sample, and
+  // existing theme cards all render with the real typeface instead of a fallback.
+  useEffect(() => {
+    FONT_OPTIONS.forEach((f) => loadWebFont(f.value));
+  }, []);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTheme, setEditingTheme] = useState<Theme | null>(null);
   const [builderMode, setBuilderMode] = useState<'create' | 'edit' | 'clone'>('create');
