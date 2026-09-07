@@ -103,14 +103,16 @@ export function HeroBento({
   return (
     <section className="pt-6 lg:pt-10">
       {/* Mobile: swipeable horizontal carousel (all sets, one card at a time with a peek) */}
-      <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-4 snap-x snap-mandatory pb-1">
-          <div className="snap-start shrink-0 w-[82%]">{mainCard}</div>
+      <div className="lg:hidden overflow-x-auto scrollbar-hide">
+        <div className="flex gap-5 snap-x snap-mandatory px-4 pb-1">
+          <div className="snap-start shrink-0 w-[78%]">{mainCard}</div>
           {rest.map((s, i) => (
-            <div key={s.id} className="snap-start shrink-0 w-[82%]">
+            <div key={s.id} className="snap-start shrink-0 w-[78%]">
               <SetTile set={s} language={language} tint={TINTS[(i + 1) % TINTS.length]} wide heightClass="min-h-[340px]" />
             </div>
           ))}
+          {/* trailing spacer so the last card can snap with room on both sides */}
+          <div className="shrink-0 w-px" aria-hidden="true" />
         </div>
       </div>
 
