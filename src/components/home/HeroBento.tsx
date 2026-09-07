@@ -96,11 +96,11 @@ export function HeroBento({
             {mainTitle}
           </h1>
         </div>
-        <div className="inline-flex items-center gap-3 self-start bg-background/95 rounded-full pl-5 pr-2 py-2">
-          <span className="text-xs lg:text-sm font-medium text-foreground">
+        <div className="inline-flex items-center gap-5 self-start bg-background/95 rounded-full pl-5 pr-2 py-2">
+          <span className="text-xs lg:text-sm font-medium text-foreground whitespace-nowrap">
             {language === 'uz' ? "To'plamni ko'rish" : 'Смотреть комплект'}
           </span>
-          <span className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+          <span className="w-9 h-9 shrink-0 rounded-full bg-primary flex items-center justify-center">
             <ShoppingCart className="w-4 h-4 text-primary-foreground" />
           </span>
         </div>
