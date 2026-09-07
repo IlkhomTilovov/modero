@@ -16,5 +16,5 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src", "prisma/seed.ts", "../shared"]
+  "include": ["src", "prisma/seed.ts", "prisma/seed-furniture.ts", "../shared"]
 }
