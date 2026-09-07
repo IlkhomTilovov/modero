@@ -173,6 +173,7 @@ model Product {
   updatedAt              DateTime @updatedAt @map("updated_at")
 
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  wishlistItems WishlistItem[]
 
   @@index([categoryId])
   @@index([isActive, sortOrder])
@@ -354,6 +355,21 @@ model Customer {
   orders Order[]
 
   @@map("customers")
+}
+
+// Keyed by an anonymous device id (minted client-side, no shopper login exists)
+// rather than Customer, since Customer rows only materialize at checkout.
+model WishlistItem {
+  id        String   @id @default(uuid())
+  deviceId  String   @map("device_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, productId])
+  @@index([deviceId])
+  @@map("wishlist_items")
 }
 
 model Order {

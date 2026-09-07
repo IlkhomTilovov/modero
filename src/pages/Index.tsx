@@ -1,5 +1,8 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Crown, Percent, Sparkles, Star, Tag, type LucideIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight, ArrowLeft, Crown, Percent, Sparkles, Star, Tag, type LucideIcon,
+  Search, SlidersHorizontal, Sofa, Armchair, Bed, Table2, DoorClosed, UtensilsCrossed, Package,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/ProductCard';
 import { useFeaturedProducts, useCategories } from '@/hooks/useProducts';
@@ -20,6 +23,25 @@ import { CollectionBanners, DiscountBanner, InspirationSection } from '@/compone
 import serviceKitchen from '@/assets/service-kitchen.jpg';
 
 const HOME_PROMO_ICONS: Record<string, LucideIcon> = PROMO_ICONS;
+
+// Keyword match on category name/slug — the DB `icon` field isn't populated by any
+// admin UI today, so pills resolve a sensible furniture icon instead of relying on it.
+const CATEGORY_ICON_RULES: Array<[RegExp, LucideIcon]> = [
+  [/divan|sofa|диван/i, Sofa],
+  [/kreslo|armchair|кресл/i, Armchair],
+  [/krovat|krevat|yotoq|bed|кроват|спальн/i, Bed],
+  [/stol|stul|table|стол|стул/i, Table2],
+  [/shkaf|komod|cabinet|wardrobe|шкаф|комод/i, DoorClosed],
+  [/oshxona|kitchen|кухн/i, UtensilsCrossed],
+];
+
+function resolveCategoryIcon(name: string, slug: string): LucideIcon {
+  const haystack = `${name} ${slug}`;
+  for (const [pattern, Icon] of CATEGORY_ICON_RULES) {
+    if (pattern.test(haystack)) return Icon;
+  }
+  return Package;
+}
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -305,6 +327,7 @@ function SetsCarousel({ sets, productsBySet, language, fallbackImage }: {
 
 export default function Index() {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const homeSeo = getPageSeo('home', language);
   useSEO({ title: homeSeo.title, description: homeSeo.description, ogTitle: homeSeo.title, ogDescription: homeSeo.description });
 
@@ -314,7 +337,9 @@ export default function Index() {
 
   const shouldLoadBelowFoldData = sec2.isVisible;
   const { products: featuredProducts } = useFeaturedProducts(4, shouldLoadBelowFoldData);
-  const { categories, loading: categoriesLoading } = useCategories(shouldLoadBelowFoldData);
+  // Eager (not gated behind shouldLoadBelowFoldData): the mobile category pill
+  // row renders above the fold, right under the hero.
+  const { categories, loading: categoriesLoading } = useCategories(true);
   const { data: dbPromoTiles = [] } = usePromoTiles();
   const { sets, productsBySet, loading: setsLoading } = useActiveSets(true);
 
@@ -322,6 +347,9 @@ export default function Index() {
   const categoriesLoaded = shouldLoadBelowFoldData && !categoriesLoading;
   const cats = categoriesLoaded ? categories : [];
   const catsReady = cats.length > 0;
+  // Mobile icon-pill row sits above the fold, so it uses the eagerly-fetched
+  // list directly instead of waiting for the scroll-gated `categoriesLoaded`.
+  const mobileCats = !categoriesLoading ? categories : [];
 
   // Toifalar carousel — one-at-a-time autoplay with seamless infinite loop
   const [catPerPage, setCatPerPage] = useState(4);
@@ -412,8 +440,63 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* ============ QIDIRUV PANELI (mobile only) ============ */}
+      <div className="md:hidden container mx-auto px-4 pt-4 pb-1">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = new FormData(e.currentTarget).get('q');
+            navigate(q ? `/catalog?search=${encodeURIComponent(String(q))}` : '/catalog');
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              name="q"
+              type="text"
+              placeholder={language === 'uz' ? 'Qidirish...' : 'Поиск...'}
+              className="w-full h-11 pl-11 pr-4 rounded-full border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
+          </div>
+          <Link
+            to="/catalog"
+            aria-label={language === 'uz' ? 'Filtrlar' : 'Фильтры'}
+            className="shrink-0 w-11 h-11 rounded-full border border-border bg-card flex items-center justify-center"
+          >
+            <SlidersHorizontal className="w-4 h-4 text-foreground" />
+          </Link>
+        </form>
+      </div>
+
       {/* ============ HERO (to'plamlar bento) ============ */}
       <HeroBento sets={sets as any} loading={setsLoading} language={language} />
+
+      {/* ============ TOIFA IKONKALARI (mobile only) ============ */}
+      {mobileCats.length > 0 && (
+        <div className="md:hidden container mx-auto px-4 pt-5 pb-1">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
+            {mobileCats.slice(0, 8).map((cat) => {
+              const name = language === 'uz' ? cat.name_uz : cat.name_ru;
+              const Icon = resolveCategoryIcon(name, cat.slug);
+              return (
+                <Link
+                  key={cat.id}
+                  to={`/catalog?category=${cat.slug}`}
+                  className="shrink-0 w-[72px] flex flex-col items-center gap-1.5"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-card border border-border/60 flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+                  </div>
+                  <span className="text-[11px] text-center text-foreground/80 leading-tight line-clamp-2">
+                    {name}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
 
       {/* ============ PROMO TILES (DB-driven karusel) ============ */}
@@ -591,7 +674,7 @@ export default function Index() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {featuredProducts.slice(0, 4).map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} variant="grid" />
             ))}
           </div>
         </section>
