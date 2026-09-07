@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import { CartProvider } from "@/hooks/useCart";
-import { WishlistProvider } from "@/hooks/useWishlist";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/hooks/useAuth";
 import { EditModeProvider } from "@/hooks/useEditMode";
@@ -133,7 +132,6 @@ const App = () => (
         <SystemSettingsProvider>
           <LanguageProvider>
             <CartProvider>
-              <WishlistProvider>
               <AuthProvider>
                 <SiteContentProvider>
                   <EditModeProvider>
@@ -273,7 +271,6 @@ const App = () => (
                   </EditModeProvider>
                 </SiteContentProvider>
               </AuthProvider>
-              </WishlistProvider>
             </CartProvider>
           </LanguageProvider>
         </SystemSettingsProvider>

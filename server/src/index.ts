@@ -24,7 +24,6 @@ import { ordersRouter } from './routes/orders.routes';
 import { amocrmRouter } from './routes/amocrm.routes';
 import { telegramRouter } from './routes/telegram.routes';
 import { uploadsRouter } from './routes/uploads.routes';
-import { wishlistRouter } from './routes/wishlist.routes';
 import { sitemapRouter } from './routes/sitemap.routes';
 import { prerenderRouter } from './routes/prerender.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -63,7 +62,6 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/admin/amocrm', amocrmRouter);
 app.use('/api/admin/telegram', telegramRouter);
 app.use('/api/uploads', uploadsRouter);
-app.use('/api/wishlist', wishlistRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

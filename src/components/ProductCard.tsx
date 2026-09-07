@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Heart, Plus, Check } from 'lucide-react';
+import { Plus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
-import { useWishlist } from '@/hooks/useWishlist';
 import { LazyImage } from '@/components/LazyImage';
 import type { Product } from '@/hooks/useProducts';
 
@@ -32,9 +31,7 @@ interface ProductCardProps {
 export function ProductCard({ product, eager = false, imageAspect = 'aspect-square', imageFit = 'cover', compact = false, variant = 'default' }: ProductCardProps) {
   const { language, t } = useLanguage();
   const { addItem, isInCart } = useCart();
-  const { isWishlisted, toggleWishlist } = useWishlist();
   const inCart = isInCart(product.id);
-  const wishlisted = isWishlisted(product.id);
 
 
   const name = language === 'uz' ? product.name_uz : product.name_ru;
@@ -71,24 +68,6 @@ export function ProductCard({ product, eager = false, imageAspect = 'aspect-squa
           </span>
         )}
       </Link>
-
-      <button
-        type="button"
-        aria-label={wishlisted ? (language === 'uz' ? "Sevimlilardan o'chirish" : 'Убрать из избранного') : (language === 'uz' ? 'Sevimlilarga qo\'shish' : 'В избранное')}
-        aria-pressed={wishlisted}
-        onClick={(e) => {
-          e.preventDefault();
-          toggleWishlist(product.id);
-        }}
-        className={`absolute right-2 flex items-center justify-center rounded-full bg-background/90 backdrop-blur-sm shadow-soft-sm transition-transform hover:scale-105 ${compact ? 'top-2 w-7 h-7' : 'top-3 w-9 h-9'}`}
-      >
-        <Heart
-          className={compact ? 'w-3.5 h-3.5' : 'w-4.5 h-4.5'}
-          strokeWidth={2}
-          fill={wishlisted ? 'currentColor' : 'none'}
-          style={wishlisted ? { color: 'hsl(var(--destructive))' } : undefined}
-        />
-      </button>
 
       <div className={`flex flex-col flex-1 ${compact ? 'p-1.5 md:p-2' : 'p-3 md:p-5'}`}>
         {variant === 'grid' ? (
