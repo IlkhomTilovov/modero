@@ -21,7 +21,13 @@ export function Header() {
   const { settings } = useSystemSettings();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
+    // Hysteresis (enter >60, leave <40) instead of one threshold at 50 — a
+    // single value flickers the header style back and forth whenever scroll
+    // position settles right around it (momentum scroll, rubber-banding).
+    const handleScroll = () => {
+      const y = window.scrollY;
+      setScrolled((prev) => (prev ? y > 40 : y > 60));
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
