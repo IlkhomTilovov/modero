@@ -70,7 +70,7 @@ export function HeroBento({
   const mainCard = (
     <Link
       to={mainHref}
-      className="group relative block overflow-hidden rounded-[2rem] transform-gpu bg-foreground min-h-[340px] lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
+      className="group relative block overflow-hidden rounded-[2rem] transform-gpu bg-foreground h-[420px] lg:h-auto lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
     >
       {main.image && (
         <LazyImage
@@ -120,7 +120,7 @@ export function HeroBento({
           <div className="snap-center shrink-0 w-full px-4">{mainCard}</div>
           {rest.map((s, i) => (
             <div key={s.id} className="snap-center shrink-0 w-full px-4">
-              <SetTile set={s} language={language} tint={TINTS[(i + 1) % TINTS.length]} wide heightClass="min-h-[340px]" />
+              <SetTile set={s} language={language} tint={TINTS[(i + 1) % TINTS.length]} wide heightClass="h-[420px]" />
             </div>
           ))}
         </div>
