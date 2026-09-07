@@ -59,57 +59,73 @@ export function HeroBento({
   const wide = rest[0];
   const small = rest.slice(1, 3);
 
+  const mainCard = (
+    <Link
+      to={mainHref}
+      className="group relative overflow-hidden rounded-[2rem] bg-foreground min-h-[340px] lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
+    >
+      {main.image && (
+        <LazyImage
+          src={main.image}
+          alt={mainTitle}
+          priority
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          width={1200}
+          height={840}
+          wrapperClassName="absolute inset-0"
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-luxe"
+        />
+      )}
+
+      <div className="absolute inset-0 bg-gradient-to-t from-foreground/85 via-foreground/40 to-foreground/10" />
+
+      <div className="relative h-full p-6 lg:p-12 flex flex-col justify-between">
+        <div>
+          <span className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.24em] text-background/60">
+            {language === 'uz' ? "To'plamlar" : 'Комплекты'}
+          </span>
+          <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-6xl font-bold leading-[1.05] text-background max-w-[16ch]">
+            {mainTitle}
+          </h1>
+        </div>
+        <div className="inline-flex items-center gap-3 self-start bg-background/95 rounded-full pl-5 pr-2 py-2">
+          <span className="text-xs lg:text-sm font-medium text-foreground">
+            {language === 'uz' ? "To'plamni ko'rish" : 'Смотреть комплект'}
+          </span>
+          <span className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+            <ShoppingCart className="w-4 h-4 text-primary-foreground" />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+
   return (
-    <section className="container mx-auto px-4 lg:px-8 pt-6 lg:pt-10">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* Katta to'q kartochka */}
-        <Link
-          to={mainHref}
-          className="group relative overflow-hidden rounded-[2rem] bg-foreground min-h-[340px] lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
-        >
-          {main.image && (
-            <LazyImage
-              src={main.image}
-              alt={mainTitle}
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              width={1200}
-              height={840}
-              wrapperClassName="absolute inset-0"
-              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-luxe"
-            />
-          )}
-
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/85 via-foreground/40 to-foreground/10" />
-
-          <div className="relative h-full p-6 lg:p-12 flex flex-col justify-between">
-            <div>
-              <span className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.24em] text-background/60">
-                {language === 'uz' ? "To'plamlar" : 'Комплекты'}
-              </span>
-              <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-6xl font-bold leading-[1.05] text-background max-w-[16ch]">
-                {mainTitle}
-              </h1>
+    <section className="pt-6 lg:pt-10">
+      {/* Mobile: swipeable horizontal carousel (all sets, one card at a time with a peek) */}
+      <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-4 snap-x snap-mandatory pb-1">
+          <div className="snap-start shrink-0 w-[82%]">{mainCard}</div>
+          {rest.map((s, i) => (
+            <div key={s.id} className="snap-start shrink-0 w-[82%]">
+              <SetTile set={s} language={language} tint={TINTS[(i + 1) % TINTS.length]} wide heightClass="min-h-[340px]" />
             </div>
-            <div className="inline-flex items-center gap-3 self-start bg-background/95 rounded-full pl-5 pr-2 py-2">
-              <span className="text-xs lg:text-sm font-medium text-foreground">
-                {language === 'uz' ? "To'plamni ko'rish" : 'Смотреть комплект'}
-              </span>
-              <span className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
-                <ShoppingCart className="w-4 h-4 text-primary-foreground" />
-              </span>
-            </div>
-          </div>
-        </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop: bento grid */}
+      <div className="hidden lg:grid container mx-auto px-8 grid-cols-2 gap-6">
+        {mainCard}
 
         {/* O'ng ustun */}
-        <div className="grid grid-rows-2 gap-4 lg:gap-6">
+        <div className="grid grid-rows-2 gap-6">
           {wide ? (
             <SetTile set={wide} language={language} tint={TINTS[0]} wide />
           ) : (
-            <div className="hidden lg:block" />
+            <div />
           )}
-          <div className={`grid gap-4 lg:gap-6 ${small.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`grid gap-6 ${small.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {small.map((s, i) => (
               <SetTile key={s.id} set={s} language={language} tint={TINTS[i + 1]} />
             ))}
@@ -125,17 +141,19 @@ function SetTile({
   language,
   tint,
   wide = false,
+  heightClass = 'min-h-[170px] lg:min-h-0',
 }: {
   set: SetLike;
   language: Lang;
   tint: string;
   wide?: boolean;
+  heightClass?: string;
 }) {
   const title = language === 'uz' ? set.title_uz : set.title_ru;
   return (
     <Link
       to={setHref(set)}
-      className={`group relative overflow-hidden rounded-[2rem] ${tint} min-h-[170px] lg:min-h-0 shadow-soft hover:shadow-soft-lg transition-all duration-500 ease-luxe`}
+      className={`group relative overflow-hidden rounded-[2rem] ${tint} ${heightClass} shadow-soft hover:shadow-soft-lg transition-all duration-500 ease-luxe`}
     >
       {set.image && (
         <LazyImage
