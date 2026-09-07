@@ -70,7 +70,7 @@ export function HeroBento({
   const mainCard = (
     <Link
       to={mainHref}
-      className="group relative block overflow-hidden rounded-[2rem] transform-gpu bg-foreground h-[420px] lg:h-auto lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
+      className="group relative block overflow-hidden rounded-none lg:rounded-[2rem] transform-gpu bg-foreground h-[420px] lg:h-auto lg:min-h-[560px] shadow-soft hover:shadow-soft-lg transition-shadow duration-500 ease-luxe"
     >
       {main.image && (
         <LazyImage
@@ -177,7 +177,7 @@ function SetTile({
   return (
     <Link
       to={setHref(set)}
-      className={`group relative block overflow-hidden rounded-[2rem] transform-gpu ${tint} ${heightClass} shadow-soft hover:shadow-soft-lg transition-all duration-500 ease-luxe`}
+      className={`group relative block overflow-hidden rounded-none lg:rounded-[2rem] transform-gpu ${tint} ${heightClass} shadow-soft hover:shadow-soft-lg transition-all duration-500 ease-luxe`}
     >
       {set.image && (
         <LazyImage
