@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, ShoppingCart } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { LazyImage } from '@/components/LazyImage';
 
 type Lang = 'uz' | 'ru';
@@ -34,6 +35,13 @@ export function HeroBento({
   loading: boolean;
   language: Lang;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const onScrollerScroll = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setActiveSlide(Math.round(el.scrollLeft / el.clientWidth));
+  };
   if (loading) {
     return (
       <section className="container mx-auto px-4 lg:px-8 pt-6 lg:pt-10">
@@ -102,19 +110,33 @@ export function HeroBento({
 
   return (
     <section className="pt-6 lg:pt-10">
-      {/* Mobile: swipeable horizontal carousel (all sets, one card at a time with a peek) */}
-      <div className="lg:hidden overflow-x-auto scrollbar-hide">
-        <div className="flex gap-5 snap-x snap-mandatory px-4 pb-1">
-          <div className="snap-start shrink-0 w-[78%]">{mainCard}</div>
+      {/* Mobile: swipeable carousel — one full set card visible at a time, no peek */}
+      <div
+        ref={scrollerRef}
+        onScroll={onScrollerScroll}
+        className="lg:hidden overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+      >
+        <div className="flex">
+          <div className="snap-center shrink-0 w-full px-4">{mainCard}</div>
           {rest.map((s, i) => (
-            <div key={s.id} className="snap-start shrink-0 w-[78%]">
+            <div key={s.id} className="snap-center shrink-0 w-full px-4">
               <SetTile set={s} language={language} tint={TINTS[(i + 1) % TINTS.length]} wide heightClass="min-h-[340px]" />
             </div>
           ))}
-          {/* trailing spacer so the last card can snap with room on both sides */}
-          <div className="shrink-0 w-px" aria-hidden="true" />
         </div>
       </div>
+      {sets.length > 1 && (
+        <div className="lg:hidden flex justify-center gap-1.5 mt-3">
+          {sets.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === activeSlide ? 'w-6 bg-foreground' : 'w-1.5 bg-foreground/25'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Desktop: bento grid */}
       <div className="hidden lg:grid container mx-auto px-8 grid-cols-2 gap-6">
