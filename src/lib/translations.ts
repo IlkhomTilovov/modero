@@ -105,14 +105,14 @@ export const translations = {
     about: {
       title: "Biz xaqimizda",
       story: "Bizning tarix",
-      storyText: "Sifatli va mustahkam kiyim quritish sushilkalari savdosi bilan shug'ullanamiz. Mijozlarimizga qulay va ishonchli mahsulotlarni taklif qilamiz.",
+      storyText: "Sifatli va zamonaviy mebel ishlab chiqarish va savdosi bilan shug'ullanamiz. Mijozlarimizga qulay, chidamli va zamonaviy dizaynli mahsulotlarni taklif qilamiz.",
       mission: "Missiyamiz",
       missionText: "Mijozlarimizga eng yaxshi sifat va xizmatni taqdim etish. Biz har bir buyurtmani alohida e'tibor bilan bajaramiz.",
       values: "Qadriyatlarimiz",
       valuesText: "Sifat, halollik va mijoz mamnuniyati - bu bizning asosiy qadriyatlarimiz.",
       stats: {
         years: "Yillik tajriba",
-        products: "Sotilgan sushilka",
+        products: "Sotilgan mahsulot",
         customers: "Mamnun mijozlar",
         cities: "Xizmat ko'rsatadigan shaharlar",
       },
@@ -279,14 +279,14 @@ export const translations = {
     about: {
       title: "О нас",
       story: "Наша история",
-      storyText: "Мы занимаемся продажей качественных и прочных сушилок для белья. Предлагаем нашим клиентам удобные и надежные товары.",
+      storyText: "Мы занимаемся производством и продажей качественной современной мебели. Предлагаем нашим клиентам удобные, прочные товары с современным дизайном.",
       mission: "Наша миссия",
       missionText: "Предоставить нашим клиентам лучшее качество и сервис. Мы выполняем каждый заказ с особым вниманием.",
       values: "Наши ценности",
       valuesText: "Качество, честность и удовлетворённость клиентов — наши основные ценности.",
       stats: {
         years: "Лет опыта",
-        products: "Продано сушилок",
+        products: "Продано товаров",
         customers: "Довольных клиентов",
         cities: "Городов обслуживания",
       },
