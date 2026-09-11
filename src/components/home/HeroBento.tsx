@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, ShoppingCart } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { LazyImage } from '@/components/LazyImage';
+import { getTranslated } from '@shared/translate';
 
 type Lang = 'uz' | 'ru';
 
@@ -9,6 +10,7 @@ interface SetLike {
   id: string;
   title_uz: string;
   title_ru: string;
+  translations?: Record<string, { title?: string }> | null;
   image?: string | null;
   href?: string | null;
 }
@@ -62,7 +64,7 @@ export function HeroBento({
   if (sets.length === 0) return null;
 
   const [main, ...rest] = sets;
-  const mainTitle = language === 'uz' ? main.title_uz : main.title_ru;
+  const mainTitle = getTranslated(main.translations, language, 'title', language === 'ru' ? main.title_ru : main.title_uz);
   const mainHref = setHref(main);
   const wide = rest[0];
   const small = rest.slice(1, 3);
@@ -180,7 +182,7 @@ function SetTile({
   heightClass?: string;
   priority?: boolean;
 }) {
-  const title = language === 'uz' ? set.title_uz : set.title_ru;
+  const title = getTranslated(set.translations, language, 'title', language === 'ru' ? set.title_ru : set.title_uz);
   return (
     <Link
       to={setHref(set)}

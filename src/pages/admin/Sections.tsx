@@ -14,11 +14,15 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminT } from '@/hooks/useAdminT';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAllLanguages } from '@/hooks/useLanguages';
+import { LocalizedField } from '@/components/admin/LocalizedField';
+import { getTranslated } from '@shared/translate';
 
 interface Section {
   id: string;
   name_uz: string;
   name_ru: string;
+  translations: Record<string, { name?: string }> | null;
   slug: string;
   sort_order: number;
   is_active: boolean;
@@ -28,16 +32,14 @@ interface Section {
 }
 
 interface FormData {
-  name_uz: string;
-  name_ru: string;
+  translations: Record<string, string>;
   slug: string;
   sort_order: number;
   is_active: boolean;
 }
 
 const initialFormData: FormData = {
-  name_uz: '',
-  name_ru: '',
+  translations: {},
   slug: '',
   sort_order: 0,
   is_active: true,
@@ -56,7 +58,8 @@ export default function Sections() {
   const { toast } = useToast();
   const t = useAdminT();
   const { language } = useLanguage();
-  const sectionName = (s: Section) => (language === 'ru' ? s.name_ru : s.name_uz);
+  const { languages } = useAllLanguages();
+  const sectionName = (s: Section) => getTranslated(s.translations, language, 'name', language === 'ru' ? s.name_ru : s.name_uz);
 
   useEffect(() => {
     fetchSections();
@@ -118,8 +121,15 @@ export default function Sections() {
   const openEditDialog = (section: Section) => {
     setSelectedSection(section);
     setFormData({
-      name_uz: section.name_uz,
-      name_ru: section.name_ru,
+      translations: {
+        uz: section.translations?.uz?.name ?? section.name_uz,
+        ru: section.translations?.ru?.name ?? section.name_ru,
+        ...Object.fromEntries(
+          Object.entries(section.translations ?? {})
+            .filter(([code]) => code !== 'uz' && code !== 'ru')
+            .map(([code, v]) => [code, v?.name ?? ''])
+        ),
+      },
       slug: section.slug,
       sort_order: section.sort_order,
       is_active: section.is_active,
@@ -128,10 +138,12 @@ export default function Sections() {
     setDialogOpen(true);
   };
 
-  const handleNameChange = (value: string, field: 'name_uz' | 'name_ru') => {
-    const newFormData = { ...formData, [field]: value };
-    if (field === 'name_uz' && (!formData.slug || formData.slug === generateSlug(formData.name_uz))) {
-      newFormData.slug = generateSlug(value);
+  const handleTranslationsChange = (translations: Record<string, string>) => {
+    const newFormData = { ...formData, translations };
+    const defaultLang = languages.find((l) => l.is_default)?.code ?? 'uz';
+    const nameForSlug = translations[defaultLang] ?? '';
+    if (!formData.slug || formData.slug === generateSlug(formData.translations[defaultLang] ?? '')) {
+      newFormData.slug = generateSlug(nameForSlug);
     }
     setFormData(newFormData);
   };
@@ -148,12 +160,14 @@ export default function Sections() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name_uz || !formData.name_ru) {
+    const nameUz = (formData.translations.uz ?? '').trim();
+    const nameRu = (formData.translations.ru ?? '').trim();
+    if (!nameUz || !nameRu) {
       toast({ variant: 'destructive', title: t.sections.error, description: t.sections.requiredFields });
       return;
     }
 
-    const slug = formData.slug || generateSlug(formData.name_uz);
+    const slug = formData.slug || generateSlug(nameUz);
     const isUnique = await checkSlugUnique(slug, selectedSection?.id);
     if (!isUnique) {
       setSlugError(t.sections.slugTaken);
@@ -161,9 +175,15 @@ export default function Sections() {
     }
 
     try {
+      const translations = Object.fromEntries(
+        Object.entries(formData.translations)
+          .filter(([, v]) => v?.trim())
+          .map(([code, v]) => [code, { name: v.trim() }])
+      );
       const sectionData = {
-        name_uz: formData.name_uz.trim(),
-        name_ru: formData.name_ru.trim(),
+        name_uz: nameUz,
+        name_ru: nameRu,
+        translations,
         slug,
         sort_order: formData.sort_order,
         is_active: formData.is_active,
@@ -299,7 +319,7 @@ export default function Sections() {
                       <div>
                         <p className="font-medium">{sectionName(section)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {language === 'ru' ? section.name_uz : section.name_ru}
+                          {getTranslated(section.translations, language === 'ru' ? 'uz' : 'ru', 'name', language === 'ru' ? section.name_uz : section.name_ru)}
                         </p>
                       </div>
                     </TableCell>
@@ -366,24 +386,13 @@ export default function Sections() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t.sections.nameUz}</Label>
-                <Input
-                  value={formData.name_uz}
-                  onChange={(e) => handleNameChange(e.target.value, 'name_uz')}
-                  placeholder={t.sections.placeholderUz}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t.sections.nameRu}</Label>
-                <Input
-                  value={formData.name_ru}
-                  onChange={(e) => handleNameChange(e.target.value, 'name_ru')}
-                  placeholder={t.sections.placeholderRu}
-                />
-              </div>
-            </div>
+            <LocalizedField
+              label={t.sections.nameUzRu}
+              value={formData.translations}
+              onChange={handleTranslationsChange}
+              languages={languages}
+              required
+            />
 
             <div className="space-y-2">
               <Label>{t.sections.slugUrl}</Label>

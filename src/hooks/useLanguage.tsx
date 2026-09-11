@@ -24,7 +24,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = translations[language];
+  // Fall back to Uzbek UI copy for any catalog language beyond uz/ru — the
+  // static UI-chrome dictionary only has those two translated.
+  const t = (translations as Record<string, typeof translations.uz>)[language] ?? translations.uz;
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

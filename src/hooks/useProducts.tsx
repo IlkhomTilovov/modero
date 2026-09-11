@@ -5,6 +5,7 @@ export interface Product {
   id: string;
   name_uz: string;
   name_ru: string;
+  translations: Record<string, { name?: string; description?: string; fullDescription?: string; metaTitle?: string; metaDescription?: string }> | null;
   slug: string | null;
   description_uz: string | null;
   description_ru: string | null;
@@ -38,6 +39,7 @@ export interface Category {
   id: string;
   name_uz: string;
   name_ru: string;
+  translations: Record<string, { name?: string; metaTitle?: string; metaDescription?: string }> | null;
   slug: string;
   icon: string | null;
   image: string | null;
@@ -86,6 +88,7 @@ export function mapApiProduct(p: any): Product {
     id: p.id,
     name_uz: p.nameUz,
     name_ru: p.nameRu,
+    translations: p.translations,
     slug: p.slug,
     description_uz: p.descriptionUz,
     description_ru: p.descriptionRu,
@@ -121,6 +124,7 @@ function mapCategory(c: any): Category {
     id: c.id,
     name_uz: c.nameUz,
     name_ru: c.nameRu,
+    translations: c.translations,
     slug: c.slug,
     icon: c.icon,
     image: c.image,
@@ -274,7 +278,7 @@ export function useCategoriesWithState(enabled = true) {
 }
 
 export function useSections(enabled = true) {
-  const [sections, setSections] = useState<Array<{ id: string; name_uz: string; name_ru: string; slug: string; sort_order: number; is_active: boolean }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; name_uz: string; name_ru: string; translations: Record<string, { name?: string }> | null; slug: string; sort_order: number; is_active: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -291,6 +295,7 @@ export function useSections(enabled = true) {
             id: s.id,
             name_uz: s.nameUz,
             name_ru: s.nameRu,
+            translations: s.translations,
             slug: s.slug,
             sort_order: s.sortOrder,
             is_active: s.isActive,

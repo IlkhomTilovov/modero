@@ -3,6 +3,7 @@ import { X, Upload, Loader2, Type, Image as ImageIcon, Check, Link2 } from 'luci
 import { useEditMode } from '@/hooks/useEditMode';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useActiveLanguages } from '@/hooks/useLanguages';
 import { useAutosave } from '@/hooks/useAutosave';
 import { apiUpload, apiDelete } from '@/integrations/api/client';
 import { convertImageToWebP } from '@/lib/imageToWebp';
@@ -16,6 +17,8 @@ export function EditorPanel() {
   const { selectedElement, selectElement, isPanelOpen, setIsPanelOpen, setHasUnsavedChanges } = useEditMode();
   const { getContent, updateContent } = useSiteContent();
   const { language } = useLanguage();
+  const { languages: catalogLanguages } = useActiveLanguages();
+  const currentLanguageName = catalogLanguages.find((l) => l.code === language)?.name || language.toUpperCase();
   const { toast } = useToast();
   
   const [editValue, setEditValue] = useState('');
@@ -218,7 +221,7 @@ export function EditorPanel() {
                     />
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Hozirgi til: {language === 'uz' ? "O'zbek" : "Русский"} • Avtomatik saqlanadi
+                    Hozirgi til: {currentLanguageName} • Avtomatik saqlanadi
                   </p>
                 </div>
               ) : selectedElement.type === 'link' ? (

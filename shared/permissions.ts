@@ -22,6 +22,7 @@ export interface RolePermissions {
   admins: Permission;
   telegram: Permission;
   systemSettings: Permission;
+  languages: Permission;
 }
 
 export const rolePermissions: Record<AppRole, RolePermissions> = {
@@ -37,6 +38,7 @@ export const rolePermissions: Record<AppRole, RolePermissions> = {
     admins: { view: false, create: false, edit: false, delete: false },
     telegram: { view: false, create: false, edit: false, delete: false },
     systemSettings: { view: false, create: false, edit: false, delete: false },
+    languages: { view: false, create: false, edit: false, delete: false },
   },
 
   // MANAGER: Categories, products, content, telegram
@@ -51,6 +53,7 @@ export const rolePermissions: Record<AppRole, RolePermissions> = {
     admins: { view: false, create: false, edit: false, delete: false },
     telegram: { view: true, create: true, edit: true, delete: true },
     systemSettings: { view: false, create: false, edit: false, delete: false },
+    languages: { view: true, create: false, edit: false, delete: false },
   },
 
   // ADMIN: Full access
@@ -65,6 +68,7 @@ export const rolePermissions: Record<AppRole, RolePermissions> = {
     admins: { view: true, create: true, edit: true, delete: true },
     telegram: { view: true, create: true, edit: true, delete: true },
     systemSettings: { view: true, create: true, edit: true, delete: true },
+    languages: { view: true, create: true, edit: true, delete: true },
   },
 };
 

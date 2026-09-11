@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Truck, RotateCcw, ShieldCheck, Headphones } from 'lucide-react';
 import { LazyImage } from '@/components/LazyImage';
 import { Button } from '@/components/ui/button';
+import { getTranslated } from '@shared/translate';
 
 type Lang = 'uz' | 'ru';
 
@@ -12,6 +13,7 @@ interface CategoryLike {
   slug?: string | null;
   name_uz: string;
   name_ru: string;
+  translations?: Record<string, { name?: string }> | null;
   image?: string | null;
   show_in_banner?: boolean | null;
 }
@@ -20,6 +22,7 @@ interface SetLike {
   id: string;
   title_uz: string;
   title_ru: string;
+  translations?: Record<string, { title?: string }> | null;
   image?: string | null;
 }
 
@@ -27,6 +30,7 @@ interface ProductLike {
   id: string;
   name_uz: string;
   name_ru: string;
+  translations?: Record<string, { name?: string }> | null;
   slug?: string | null;
   price?: number | null;
   original_price?: number | null;
@@ -66,7 +70,7 @@ export function CollectionBanners({
     <section className="container mx-auto px-4 lg:px-8 mt-10 lg:mt-16">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
         {picks.map((cat, i) => {
-          const name = language === 'uz' ? cat.name_uz : cat.name_ru;
+          const name = getTranslated(cat.translations, language, 'name', language === 'ru' ? cat.name_ru : cat.name_uz);
           return (
             <Link
               key={cat.id}
@@ -129,6 +133,7 @@ export function DiscountBanner({
             id: p.id,
             name_uz: p.nameUz,
             name_ru: p.nameRu,
+            translations: p.translations,
             slug: p.slug,
             price: p.price,
             original_price: p.originalPrice,
@@ -186,7 +191,7 @@ export function DiscountBanner({
             {image && (
               <LazyImage
                 src={image}
-                alt={language === 'uz' ? best.name_uz : best.name_ru}
+                alt={getTranslated(best.translations, language, 'name', language === 'ru' ? best.name_ru : best.name_uz)}
                 wrapperClassName="absolute inset-0"
                 className="w-full h-full object-cover"
               />
@@ -237,7 +242,7 @@ export function InspirationSection({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         {picks.map((s) => {
-          const title = language === 'uz' ? s.title_uz : s.title_ru;
+          const title = getTranslated(s.translations, language, 'title', language === 'ru' ? s.title_ru : s.title_uz);
           return (
             <Link
               key={s.id}

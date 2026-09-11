@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { apiGet, apiPut, ApiError } from '@/integrations/api/client';
 import { useToast } from './use-toast';
+import { getTranslated } from '@shared/translate';
 
 interface ContentItem {
   id: string;
   key: string;
   value_uz: string | null;
   value_ru: string | null;
+  translations: Record<string, { value?: string }> | null;
   content_type: string | null;
   page: string | null;
   section: string | null;
@@ -15,7 +17,7 @@ interface ContentItem {
 interface ContentUpdateEvent {
   type: 'content-update';
   key: string;
-  language: 'uz' | 'ru';
+  language: string;
   value: string;
   timestamp: number;
 }
@@ -23,8 +25,8 @@ interface ContentUpdateEvent {
 interface SiteContentContextType {
   content: Record<string, ContentItem>;
   loading: boolean;
-  getContent: (key: string, language: 'uz' | 'ru', fallback?: string) => string;
-  updateContent: (key: string, language: 'uz' | 'ru', value: string) => Promise<boolean>;
+  getContent: (key: string, language: string, fallback?: string) => string;
+  updateContent: (key: string, language: string, value: string) => Promise<boolean>;
   refreshContent: () => Promise<void>;
   lastUpdate: ContentUpdateEvent | null;
 }
@@ -92,6 +94,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
           key: item.key,
           value_uz: item.valueUz,
           value_ru: item.valueRu,
+          translations: item.translations,
           content_type: item.contentType,
           page: item.page,
           section: item.section,
@@ -126,17 +129,16 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
         
         // Update local content state
         const { key, language, value } = event.data;
-        const updateField = language === 'uz' ? 'value_uz' : 'value_ru';
-        
+
         setContent((prev) => ({
           ...prev,
           [key]: {
             ...prev[key],
             id: prev[key]?.id || key,
             key,
-            [updateField]: value,
             value_uz: language === 'uz' ? value : prev[key]?.value_uz || null,
             value_ru: language === 'ru' ? value : prev[key]?.value_ru || null,
+            translations: { ...(prev[key]?.translations || {}), [language]: { value } },
             content_type: prev[key]?.content_type || 'text',
             page: prev[key]?.page || null,
             section: prev[key]?.section || null,
@@ -149,20 +151,20 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('message', handleMessage);
   }, [fetchContent]);
 
-  const getContent = useCallback((key: string, language: 'uz' | 'ru', fallback: string = '') => {
+  const getContent = useCallback((key: string, language: string, fallback: string = '') => {
     const item = content[key];
     if (!item) return fallback;
-    const value = language === 'uz' ? item.value_uz : item.value_ru;
-    return value || fallback;
+    const legacyValue = (language === 'ru' ? item.value_ru : item.value_uz) || '';
+    return getTranslated(item.translations, language, 'value', legacyValue) || fallback;
   }, [content]);
 
-  const updateContent = useCallback(async (key: string, language: 'uz' | 'ru', value: string): Promise<boolean> => {
+  const updateContent = useCallback(async (key: string, language: string, value: string): Promise<boolean> => {
     try {
-      const updateField = language === 'uz' ? 'value_uz' : 'value_ru';
-
       await apiPut(`/api/site-content/${encodeURIComponent(key)}`, {
         valueUz: language === 'uz' ? value : content[key]?.value_uz,
         valueRu: language === 'ru' ? value : content[key]?.value_ru,
+        language,
+        value,
         contentType: content[key]?.content_type || 'text',
         page: content[key]?.page,
         section: content[key]?.section,
@@ -175,9 +177,9 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
           ...prev[key],
           id: prev[key]?.id || key,
           key,
-          [updateField]: value,
           value_uz: language === 'uz' ? value : prev[key]?.value_uz || null,
           value_ru: language === 'ru' ? value : prev[key]?.value_ru || null,
+          translations: { ...(prev[key]?.translations || {}), [language]: { value } },
           content_type: prev[key]?.content_type || 'text',
           page: prev[key]?.page || null,
           section: prev[key]?.section || null,

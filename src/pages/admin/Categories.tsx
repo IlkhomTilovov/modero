@@ -33,11 +33,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAdminT } from '@/hooks/useAdminT';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAllLanguages } from '@/hooks/useLanguages';
+import { LocalizedField, LocalizedTextarea } from '@/components/admin/LocalizedField';
+import { getTranslated, pivotToFieldFirst, pivotToLangFirst } from '@shared/translate';
+
+const CATEGORY_TRANSLATABLE_FIELDS = ['name', 'metaTitle', 'metaDescription'];
 
 interface Category {
   id: string;
   name_uz: string;
   name_ru: string;
+  translations: Record<string, { name?: string; metaTitle?: string; metaDescription?: string }> | null;
   slug: string;
   image: string | null;
   icon: string;
@@ -69,8 +75,11 @@ interface Section {
 }
 
 interface FormData {
-  name_uz: string;
-  name_ru: string;
+  translations: {
+    name: Record<string, string>;
+    metaTitle: Record<string, string>;
+    metaDescription: Record<string, string>;
+  };
   slug: string;
   image: string;
   icon: string;
@@ -79,10 +88,6 @@ interface FormData {
   sort_order: number;
   parent_id: string;
   section_id: string;
-  meta_title_uz: string;
-  meta_title_ru: string;
-  meta_description_uz: string;
-  meta_description_ru: string;
   meta_keywords: string;
   is_indexed: boolean;
   is_followed: boolean;
@@ -94,8 +99,7 @@ const AMOCRM_CATEGORY_OPTIONS = [
 ];
 
 const initialFormData: FormData = {
-  name_uz: '',
-  name_ru: '',
+  translations: { name: {}, metaTitle: {}, metaDescription: {} },
   slug: '',
   image: '',
   icon: 'Package',
@@ -104,10 +108,6 @@ const initialFormData: FormData = {
   sort_order: 0,
   parent_id: '',
   section_id: '',
-  meta_title_uz: '',
-  meta_title_ru: '',
-  meta_description_uz: '',
-  meta_description_ru: '',
   meta_keywords: '',
   is_indexed: true,
   is_followed: true,
@@ -131,7 +131,8 @@ export default function Categories() {
   const { toast } = useToast();
   const t = useAdminT();
   const { language } = useLanguage();
-  const catName = (c: Category) => (language === 'ru' ? c.name_ru : c.name_uz);
+  const { languages } = useAllLanguages();
+  const catName = (c: Category) => getTranslated(c.translations, language, 'name', language === 'ru' ? c.name_ru : c.name_uz);
 
   const sectionName = (s: Section) => (language === 'ru' ? s.name_ru : s.name_uz);
 
@@ -245,9 +246,17 @@ export default function Categories() {
 
   const openEditDialog = (category: Category) => {
     setSelectedCategory(category);
+    const byField = pivotToFieldFirst(category.translations, CATEGORY_TRANSLATABLE_FIELDS);
     setFormData({
-      name_uz: category.name_uz,
-      name_ru: category.name_ru,
+      translations: {
+        name: { uz: category.name_uz, ru: category.name_ru, ...byField.name },
+        metaTitle: { uz: category.meta_title_uz || '', ru: category.meta_title_ru || '', ...byField.metaTitle },
+        metaDescription: {
+          uz: category.meta_description_uz || '',
+          ru: category.meta_description_ru || '',
+          ...byField.metaDescription,
+        },
+      },
       slug: category.slug,
       image: category.image || '',
       icon: category.icon,
@@ -256,10 +265,6 @@ export default function Categories() {
       sort_order: category.sort_order,
       parent_id: category.parent_id || '',
       section_id: category.section_id || '',
-      meta_title_uz: category.meta_title_uz || '',
-      meta_title_ru: category.meta_title_ru || '',
-      meta_description_uz: category.meta_description_uz || '',
-      meta_description_ru: category.meta_description_ru || '',
       meta_keywords: category.meta_keywords || '',
       is_indexed: category.is_indexed ?? true,
       is_followed: category.is_followed ?? true,
@@ -270,14 +275,14 @@ export default function Categories() {
     setDialogOpen(true);
   };
 
-  const handleNameChange = (value: string, field: 'name_uz' | 'name_ru') => {
-    const newFormData = { ...formData, [field]: value };
-    
+  const handleNameChange = (value: Record<string, string>) => {
+    const newFormData = { ...formData, translations: { ...formData.translations, name: value } };
+
     // Auto-generate slug from UZ name if slug is empty or matches the previous auto-generated slug
-    if (field === 'name_uz' && (!formData.slug || formData.slug === generateSlug(formData.name_uz))) {
-      newFormData.slug = generateSlug(value);
+    if (!formData.slug || formData.slug === generateSlug(formData.translations.name.uz ?? '')) {
+      newFormData.slug = generateSlug(value.uz ?? '');
     }
-    
+
     setFormData(newFormData);
   };
 
@@ -294,12 +299,14 @@ export default function Categories() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name_uz || !formData.name_ru) {
+    const nameUz = (formData.translations.name.uz ?? '').trim();
+    const nameRu = (formData.translations.name.ru ?? '').trim();
+    if (!nameUz || !nameRu) {
       toast({ variant: 'destructive', title: t.categories.error, description: t.categories.requiredFields });
       return;
     }
 
-    const slug = formData.slug || generateSlug(formData.name_uz);
+    const slug = formData.slug || generateSlug(nameUz);
 
     // Check slug uniqueness
     const isUnique = await checkSlugUnique(slug, selectedCategory?.id);
@@ -309,9 +316,11 @@ export default function Categories() {
     }
 
     try {
+      const translations = pivotToLangFirst(formData.translations);
       const categoryData = {
-        name_uz: formData.name_uz.trim(),
-        name_ru: formData.name_ru.trim(),
+        name_uz: nameUz,
+        name_ru: nameRu,
+        translations,
         slug,
         image: formData.image || null,
         icon: formData.icon,
@@ -320,10 +329,10 @@ export default function Categories() {
         sort_order: formData.sort_order,
         parent_id: formData.parent_id || null,
         section_id: formData.section_id || null,
-        meta_title_uz: formData.meta_title_uz || null,
-        meta_title_ru: formData.meta_title_ru || null,
-        meta_description_uz: formData.meta_description_uz || null,
-        meta_description_ru: formData.meta_description_ru || null,
+        meta_title_uz: formData.translations.metaTitle.uz || null,
+        meta_title_ru: formData.translations.metaTitle.ru || null,
+        meta_description_uz: formData.translations.metaDescription.uz || null,
+        meta_description_ru: formData.translations.metaDescription.ru || null,
         meta_keywords: formData.meta_keywords || null,
         is_indexed: formData.is_indexed,
         is_followed: formData.is_followed,
@@ -529,7 +538,9 @@ export default function Categories() {
                         {isChild && <span className="text-muted-foreground">└</span>}
                         <div>
                           <p className="font-medium">{catName(category)}</p>
-                          <p className="text-sm text-muted-foreground">{language === 'ru' ? category.name_uz : category.name_ru}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {getTranslated(category.translations, language === 'ru' ? 'uz' : 'ru', 'name', language === 'ru' ? category.name_uz : category.name_ru)}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
@@ -623,24 +634,13 @@ export default function Categories() {
 
             {/* General Tab */}
             <TabsContent value="general" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t.categories.nameUz}</Label>
-                  <Input
-                    value={formData.name_uz}
-                    onChange={(e) => handleNameChange(e.target.value, 'name_uz')}
-                    placeholder={t.categories.placeholderUz}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t.categories.nameRu}</Label>
-                  <Input
-                    value={formData.name_ru}
-                    onChange={(e) => handleNameChange(e.target.value, 'name_ru')}
-                    placeholder={t.categories.placeholderRu}
-                  />
-                </div>
-              </div>
+              <LocalizedField
+                label={t.categories.nameUzRu}
+                value={formData.translations.name}
+                onChange={handleNameChange}
+                languages={languages}
+                required
+              />
 
               <div className="space-y-2">
                 <Label>{language === 'ru' ? 'Раздел каталога' : "Katalog bo'limi"}</Label>
@@ -849,67 +849,24 @@ export default function Categories() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-medium">{t.categories.metaTitle}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t.categories.metaTitleUz}</Label>
-                    <Input
-                      value={formData.meta_title_uz}
-                      onChange={(e) => setFormData({ ...formData, meta_title_uz: e.target.value })}
-                      placeholder={formData.name_uz || t.categories.metaTitlePlaceholderUz}
-                      maxLength={60}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t.categories.chars60(formData.meta_title_uz.length)}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t.categories.metaTitleRu}</Label>
-                    <Input
-                      value={formData.meta_title_ru}
-                      onChange={(e) => setFormData({ ...formData, meta_title_ru: e.target.value })}
-                      placeholder={formData.name_ru || t.categories.metaTitlePlaceholderRu}
-                      maxLength={60}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t.categories.chars60(formData.meta_title_ru.length)}
-                    </p>
-                  </div>
-                </div>
+                <LocalizedField
+                  label={t.categories.metaTitle}
+                  value={formData.translations.metaTitle}
+                  onChange={(v) => setFormData({ ...formData, translations: { ...formData.translations, metaTitle: v } })}
+                  languages={languages}
+                />
               </div>
 
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="font-medium">{t.categories.metaDescription}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t.categories.metaDescriptionUz}</Label>
-                    <Textarea
-                      value={formData.meta_description_uz}
-                      onChange={(e) => setFormData({ ...formData, meta_description_uz: e.target.value })}
-                      placeholder={t.categories.metaDescPlaceholderUz}
-                      maxLength={160}
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t.categories.chars160(formData.meta_description_uz.length)}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t.categories.metaDescriptionRu}</Label>
-                    <Textarea
-                      value={formData.meta_description_ru}
-                      onChange={(e) => setFormData({ ...formData, meta_description_ru: e.target.value })}
-                      placeholder={t.categories.metaDescPlaceholderRu}
-                      maxLength={160}
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {t.categories.chars160(formData.meta_description_ru.length)}
-                    </p>
-                  </div>
-                </div>
+                <LocalizedTextarea
+                  label={t.categories.metaDescription}
+                  value={formData.translations.metaDescription}
+                  onChange={(v) => setFormData({ ...formData, translations: { ...formData.translations, metaDescription: v } })}
+                  languages={languages}
+                  rows={3}
+                />
               </div>
 
               <Separator />

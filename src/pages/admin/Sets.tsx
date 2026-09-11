@@ -16,18 +16,24 @@ import { convertImageToWebP } from '@/lib/imageToWebp';
 import { LazyImage } from '@/components/LazyImage';
 import { useAdminT } from '@/hooks/useAdminT';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAllLanguages } from '@/hooks/useLanguages';
+import { LocalizedField } from '@/components/admin/LocalizedField';
+import { getTranslated, pivotToFieldFirst } from '@shared/translate';
 
 interface ProductLite { id: string; name_uz: string; name_ru: string; images: string[] | null; }
 
 const emptyForm = {
-  title_uz: '', title_ru: '', image: '', href: '/catalog',
+  translations: {} as Record<string, string>,
+  image: '', href: '/catalog',
   product_ids: [] as string[], sort_order: 0, is_active: true,
 };
 
 export default function SetsAdmin() {
   const t = useAdminT().sets;
   const { language } = useLanguage();
+  const { languages } = useAllLanguages();
   const { sets, loading, refetch } = useAllSets();
+  const setTitle = (s: ProductSet) => getTranslated(s.translations, language, 'title', language === 'ru' ? (s.title_ru || s.title_uz) : s.title_uz);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProductSet | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -52,8 +58,9 @@ export default function SetsAdmin() {
 
   const openEdit = (s: ProductSet) => {
     setEditing(s);
+    const byField = pivotToFieldFirst(s.translations, ['title']);
     setForm({
-      title_uz: s.title_uz, title_ru: s.title_ru,
+      translations: { uz: s.title_uz, ru: s.title_ru, ...byField.title },
       image: s.image || '', href: s.href || '/catalog',
       product_ids: s.product_ids || [],
       sort_order: s.sort_order, is_active: s.is_active,
@@ -83,9 +90,24 @@ export default function SetsAdmin() {
   };
 
   const save = async () => {
-    if (!form.title_uz.trim() || !form.title_ru.trim()) { toast.error(t.fillTitles); return; }
+    const titleUz = (form.translations.uz ?? '').trim();
+    const titleRu = (form.translations.ru ?? '').trim();
+    if (!titleUz || !titleRu) { toast.error(t.fillTitles); return; }
     if (!form.image) { toast.error(t.uploadImageError); return; }
-    const payload = toCamelCase({ ...form, image: form.image || null, href: form.href || '/catalog' });
+    const translations = Object.fromEntries(
+      Object.entries(form.translations)
+        .filter(([, v]) => v?.trim())
+        .map(([code, v]) => [code, { title: v.trim() }])
+    );
+    const { translations: _formTranslations, ...rest } = form;
+    const payload = toCamelCase({
+      ...rest,
+      title_uz: titleUz,
+      title_ru: titleRu,
+      translations,
+      image: form.image || null,
+      href: form.href || '/catalog',
+    });
     try {
       if (editing) await apiPatch(`/api/sets/${editing.id}`, payload);
       else await apiPost('/api/sets', payload);
@@ -145,8 +167,8 @@ export default function SetsAdmin() {
       ) : (
         <div className="grid gap-4">
           {sets.map(s => {
-            const displayTitle = language === 'ru' ? (s.title_ru || s.title_uz) : s.title_uz;
-            const secondaryTitle = language === 'ru' ? s.title_uz : s.title_ru;
+            const displayTitle = setTitle(s);
+            const secondaryTitle = getTranslated(s.translations, language === 'ru' ? 'uz' : 'ru', 'title', language === 'ru' ? s.title_uz : s.title_ru);
             return (
               <Card key={s.id} className="p-4 flex gap-4 items-stretch">
                 <div className="w-40 self-stretch rounded-lg overflow-hidden bg-muted shrink-0">
@@ -178,16 +200,13 @@ export default function SetsAdmin() {
           <DialogHeader><DialogTitle>{editing ? t.editTitle : t.newTitle}</DialogTitle></DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>{t.titleUz}</Label>
-                <Input value={form.title_uz} onChange={e => setForm({ ...form, title_uz: e.target.value })} placeholder={t.titlePlaceholderUz} />
-              </div>
-              <div>
-                <Label>{t.titleRu}</Label>
-                <Input value={form.title_ru} onChange={e => setForm({ ...form, title_ru: e.target.value })} placeholder={t.titlePlaceholderRu} />
-              </div>
-            </div>
+            <LocalizedField
+              label={language === 'ru' ? 'Название' : 'Nomi'}
+              value={form.translations}
+              onChange={(v) => setForm({ ...form, translations: v })}
+              languages={languages}
+              required
+            />
 
             <div>
               <Label>{t.mainImage}</Label>
@@ -265,7 +284,7 @@ export default function SetsAdmin() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t.deleteConfirm(language === 'ru' ? (deleting?.title_ru || deleting?.title_uz || '') : (deleting?.title_uz || ''))}
+              {t.deleteConfirm(deleting ? setTitle(deleting) : '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

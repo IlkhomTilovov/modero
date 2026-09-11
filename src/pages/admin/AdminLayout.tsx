@@ -28,6 +28,7 @@ import {
   PaintBucket,
   Cog,
   Images,
+  Languages,
   LucideIcon,
 } from 'lucide-react';
 
@@ -76,6 +77,7 @@ const navGroups: NavGroup[] = [
       { titleKey: 'navProducts', url: '/admin/products', icon: Package, module: 'products' },
       { titleKey: 'navPromoTiles', url: '/admin/promo-tiles', icon: LayoutGrid, module: 'siteContent' },
       { titleKey: 'navSets', url: '/admin/sets', icon: Layers, module: 'siteContent' },
+      { titleKey: 'navLanguages', url: '/admin/languages', icon: Languages, module: 'languages' },
     ],
   },
   {

@@ -14,11 +14,14 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { CatalogFilterSidebar, SidebarFilters } from '@/components/CatalogFilterSidebar';
 import { apiGet } from '@/integrations/api/client';
+import { getTranslated } from '@shared/translate';
 
 const PAGE_SIZE = 24;
 
 export default function Catalog() {
   const { language, t } = useLanguage();
+  const catName = (c: { name_uz: string; name_ru: string; translations?: Record<string, { name?: string }> | null }) =>
+    getTranslated(c.translations, language, 'name', language === 'ru' ? c.name_ru : c.name_uz);
   const { settings } = useSystemSettings();
   const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,7 +38,7 @@ export default function Catalog() {
   const discountedParam = searchParams.get('discounted') === '1';
 
   const [setProductIds, setSetProductIds] = useState<string[] | null>(null);
-  const [setTitle, setSetTitle] = useState<{ uz: string; ru: string } | null>(null);
+  const [setTitle, setSetTitle] = useState<{ uz: string; ru: string; translations: Record<string, { title?: string }> | null } | null>(null);
   const [setImage, setSetImage] = useState<string | null>(null);
   
   const [search, setSearch] = useState('');
@@ -61,7 +64,7 @@ export default function Catalog() {
   }, [sectionParam, sections]);
 
   const selectedSection = useMemo(() => sections.find(s => s.id === resolvedSectionId), [resolvedSectionId, sections]);
-  const sectionName = selectedSection ? (language === 'uz' ? selectedSection.name_uz : selectedSection.name_ru) : null;
+  const sectionName = selectedSection ? catName(selectedSection) : null;
 
   // All category IDs belonging to the selected section (including descendants)
   const sectionCategoryIds = useMemo(() => {
@@ -123,7 +126,7 @@ export default function Catalog() {
       const { item: data } = await apiGet<{ item: any }>(`/api/sets/${setId}`);
       if (cancelled) return;
       setSetProductIds((data?.productIds as string[]) || []);
-      setSetTitle(data ? { uz: data.titleUz, ru: data.titleRu } : null);
+      setSetTitle(data ? { uz: data.titleUz, ru: data.titleRu, translations: data.translations } : null);
       setSetImage((data?.image as string) || null);
       setCurrentPage(1);
     })();
@@ -224,14 +227,17 @@ export default function Catalog() {
   }, [navigationType, loading, scrollKey, products.length]);
 
   const selectedCategory = categories?.find(c => c.slug === sidebarFilters.categoryId || c.id === sidebarFilters.categoryId);
-  const categoryName = selectedCategory
-    ? (language === 'uz' ? selectedCategory.name_uz : selectedCategory.name_ru)
-    : sectionName;
+  const categoryName = selectedCategory ? catName(selectedCategory) : sectionName;
 
   const catalogSeo = getPageSeo('catalog', language);
   const seoTitle = categoryName || catalogSeo.title;
   const seoDescription = selectedCategory
-    ? (language === 'uz' ? selectedCategory.meta_description_uz : selectedCategory.meta_description_ru) || categoryName || catalogSeo.description
+    ? getTranslated(
+        selectedCategory.translations,
+        language,
+        'metaDescription',
+        (language === 'uz' ? selectedCategory.meta_description_uz : selectedCategory.meta_description_ru) || ''
+      ) || categoryName || catalogSeo.description
     : sectionName || catalogSeo.description;
 
   useSEO({
@@ -316,14 +322,14 @@ export default function Catalog() {
       <div className="container mx-auto px-4">
         {setTitle && setImage ? (
           <div className="mb-8 relative rounded-[2rem] overflow-hidden aspect-[21/8] md:aspect-[21/7]">
-            <img src={setImage} alt={language === 'uz' ? setTitle.uz : setTitle.ru} width={1600} height={533} fetchpriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={setImage} alt={getTranslated(setTitle.translations, language, 'title', language === 'ru' ? setTitle.ru : setTitle.uz)} width={1600} height={533} fetchpriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
             <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-12">
               <p className="text-media-foreground/80 text-sm md:text-base mb-2">
                 {language === 'uz' ? 'Setlar to\'plami' : 'Набор сетов'}
               </p>
               <h1 className="font-serif text-3xl md:text-5xl font-bold text-media-foreground">
-                {language === 'uz' ? setTitle.uz : setTitle.ru}
+                {getTranslated(setTitle.translations, language, 'title', language === 'ru' ? setTitle.ru : setTitle.uz)}
               </h1>
             </div>
           </div>
@@ -374,7 +380,7 @@ export default function Catalog() {
                         return p;
                       })}
                     >
-                      {language === 'uz' ? sub.name_uz : sub.name_ru}
+                      {catName(sub)}
                     </Button>
                   ))}
                 </div>
@@ -411,9 +417,10 @@ export default function Catalog() {
                     )}
                     <span className="font-semibold">
                       {drawerSectionId
-                        ? (language === 'uz'
-                            ? sections.find(s => s.id === drawerSectionId)?.name_uz
-                            : sections.find(s => s.id === drawerSectionId)?.name_ru)
+                        ? (() => {
+                            const s = sections.find((s) => s.id === drawerSectionId);
+                            return s ? catName(s) : null;
+                          })()
                         : (language === 'uz' ? 'Katalog' : 'Каталог')}
                     </span>
                   </SheetTitle>
@@ -449,7 +456,7 @@ export default function Catalog() {
                         {[
                           ...sections.map(s => ({
                             id: s.id,
-                            name: language === 'uz' ? s.name_uz : s.name_ru,
+                            name: catName(s),
                             parents: categories.filter(c => !c.parent_id && c.section_id === s.id),
                           })),
                           {
@@ -515,7 +522,7 @@ export default function Catalog() {
                                   <span className="w-9 h-9 rounded-lg bg-muted shrink-0" />
                                 )}
                                 <span className="text-sm font-medium text-foreground truncate">
-                                  {language === 'uz' ? parent.name_uz : parent.name_ru}
+                                  {catName(parent)}
                                 </span>
                               </button>
                               {hasSubs && (
@@ -550,7 +557,7 @@ export default function Catalog() {
                                           : 'text-muted-foreground hover:text-foreground'
                                       }`}
                                     >
-                                      {language === 'uz' ? sub.name_uz : sub.name_ru}
+                                      {catName(sub)}
                                     </button>
                                   </li>
                                 ))}

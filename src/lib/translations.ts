@@ -1,4 +1,8 @@
-export type Language = 'uz' | 'ru';
+// Loosened from 'uz' | 'ru' to string: catalog content can have any number of
+// admin-added languages (see shared/translate.ts), but this UI-chrome string
+// dictionary below is only translated for uz/ru — useLanguage.tsx falls back
+// to uz for any other code so the ~350 call sites reading `t.*` never crash.
+export type Language = string;
 
 export const translations = {
   uz: {

@@ -60,6 +60,7 @@ const CheckoutFormSettings = lazyWithRetry(() => import("./pages/admin/CheckoutF
 const PromoTilesAdmin = lazyWithRetry(() => import("./pages/admin/PromoTiles"));
 const SetsAdmin = lazyWithRetry(() => import("./pages/admin/Sets"));
 const BranchesAdmin = lazyWithRetry(() => import("./pages/admin/Branches"));
+const LanguagesAdmin = lazyWithRetry(() => import("./pages/admin/Languages"));
 const HeroSlidesAdmin = lazyWithRetry(() => import("./pages/admin/HeroSlides"));
 
 
@@ -196,6 +197,11 @@ const App = () => (
                           <Route path="sets" element={
                             <ProtectedRoute module="siteContent">
                               <SetsAdmin />
+                            </ProtectedRoute>
+                          } />
+                          <Route path="languages" element={
+                            <ProtectedRoute module="languages">
+                              <LanguagesAdmin />
                             </ProtectedRoute>
                           } />
                           <Route path="hero-slides" element={

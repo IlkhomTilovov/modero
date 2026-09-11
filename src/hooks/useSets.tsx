@@ -6,6 +6,7 @@ export interface ProductSet {
   id: string;
   title_uz: string;
   title_ru: string;
+  translations: Record<string, { title?: string }> | null;
   image: string | null;
   href: string | null;
   product_ids: string[];
@@ -18,6 +19,7 @@ function mapSet(s: any): ProductSet {
     id: s.id,
     title_uz: s.titleUz,
     title_ru: s.titleRu,
+    translations: s.translations,
     image: s.image,
     href: s.href,
     product_ids: s.productIds,

@@ -6,6 +6,7 @@ import { EditableText } from '@/components/EditableText';
 import { EditableLink } from '@/components/EditableLink';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/integrations/api/client';
+import { getNavLabels } from '@/lib/navLabels';
 
 export function Footer() {
   const { language } = useLanguage();
@@ -25,11 +26,12 @@ export function Footer() {
   const address = getAddress(language);
   const workingHours = getWorkingHours(language);
 
+  const navLabels = getNavLabels(language);
   const navLinks = [
-    { to: '/', label: language === 'ru' ? 'Главная' : 'Bosh sahifa' },
-    { to: '/catalog', label: language === 'ru' ? 'Каталог' : 'Katalog' },
-    { to: '/about', label: language === 'ru' ? 'О нас' : 'Biz xaqimizda' },
-    { to: '/contact', label: language === 'ru' ? 'Контакты' : 'Aloqa' },
+    { to: '/', label: navLabels.home },
+    { to: '/catalog', label: navLabels.catalog },
+    { to: '/about', label: navLabels.about },
+    { to: '/contact', label: navLabels.contact },
   ];
 
   return (

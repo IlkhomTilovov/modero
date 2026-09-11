@@ -7,6 +7,8 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useCategories, useSections, mapApiProduct, type Product } from '@/hooks/useProducts';
+import { useActiveLanguages } from '@/hooks/useLanguages';
+import { getNavLabels } from '@/lib/navLabels';
 import { apiGet } from '@/integrations/api/client';
 
 const CartDrawer = lazy(() => import('@/components/CartDrawer').then((m) => ({ default: m.CartDrawer })));
@@ -16,6 +18,8 @@ export function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const { languages: catalogLanguages } = useActiveLanguages();
+  const navLabels = getNavLabels(language);
   const { totalItems } = useCart();
   const location = useLocation();
   const { settings } = useSystemSettings();
@@ -75,10 +79,10 @@ export function Header() {
 
 
   const navLinks = [
-    { href: '/', label: language === 'ru' ? 'Главная' : 'Bosh sahifa' },
-    { href: '/catalog', label: language === 'ru' ? 'Каталог' : 'Katalog' },
-    { href: '/about', label: language === 'ru' ? 'О нас' : 'Biz xaqimizda' },
-    { href: '/contact', label: language === 'ru' ? 'Контакты' : 'Aloqa' },
+    { href: '/', label: navLabels.home },
+    { href: '/catalog', label: navLabels.catalog },
+    { href: '/about', label: navLabels.about },
+    { href: '/contact', label: navLabels.contact },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -162,22 +166,17 @@ export function Header() {
           <div className="flex items-center gap-3 md:gap-5">
             {/* Language */}
             <div className="flex items-center border border-border rounded-sm overflow-hidden">
-              <button
-                onClick={() => setLanguage('uz')}
-                className={`px-2.5 py-1 text-xs font-medium tracking-wider transition-all duration-300 ${
-                  language === 'uz' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                UZ
-              </button>
-              <button
-                onClick={() => setLanguage('ru')}
-                className={`px-2.5 py-1 text-xs font-medium tracking-wider transition-all duration-300 ${
-                  language === 'ru' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                RU
-              </button>
+              {(catalogLanguages.length > 0 ? catalogLanguages : [{ code: 'uz' }, { code: 'ru' }]).map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => setLanguage(l.code)}
+                  className={`px-2.5 py-1 text-xs font-medium tracking-wider transition-all duration-300 ${
+                    language === l.code ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {l.code.toUpperCase()}
+                </button>
+              ))}
             </div>
 
             {/* Phone - desktop */}
@@ -191,7 +190,7 @@ export function Header() {
 
             {/* CTA Button - desktop */}
             <Button asChild className="hidden md:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm tracking-wider text-xs uppercase px-6">
-              <Link to="/contact">{language === 'ru' ? 'Связаться' : "Bog'lanish"}</Link>
+              <Link to="/contact">{navLabels.cta}</Link>
             </Button>
 
             {/* Cart */}

@@ -5,6 +5,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useCart } from '@/hooks/useCart';
 import { LazyImage } from '@/components/LazyImage';
 import type { Product } from '@/hooks/useProducts';
+import { getTranslated } from '@shared/translate';
 
 // Support both database and static data types
 interface ProductCardProps {
@@ -12,6 +13,7 @@ interface ProductCardProps {
     id: string;
     name_uz: string;
     name_ru: string;
+    translations?: Record<string, { name?: string }> | null;
     price: number;
     originalPrice?: number;
     images: string[];
@@ -34,7 +36,7 @@ export function ProductCard({ product, eager = false, imageAspect = 'aspect-squa
   const inCart = isInCart(product.id);
 
 
-  const name = language === 'uz' ? product.name_uz : product.name_ru;
+  const name = getTranslated(product.translations, language, 'name', language === 'ru' ? product.name_ru : product.name_uz);
   const formatPrice = (price: number) => price.toLocaleString('uz-UZ');
 
   const price = product.price || 0;

@@ -50,6 +50,7 @@ export const adminTranslations = {
       navAdmins: 'Adminlar',
       navTelegram: 'Telegram',
       navSystemSettings: 'Tizim sozlamalari',
+      navLanguages: 'Tillar',
     },
     // Dashboard
     dashboard: {
@@ -941,6 +942,7 @@ export const adminTranslations = {
       navAdmins: 'Администраторы',
       navTelegram: 'Telegram',
       navSystemSettings: 'Системные настройки',
+      navLanguages: 'Языки',
     },
     dashboard: {
       title: 'Дашборд',
