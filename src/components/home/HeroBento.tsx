@@ -95,6 +95,11 @@ export function HeroBento({
           <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-6xl font-bold leading-[1.05] text-background max-w-[16ch]">
             {mainTitle}
           </h1>
+          <p className="mt-3 text-sm lg:text-base text-background/70 max-w-[30ch]">
+            {language === 'uz'
+              ? "Bepul yetkazib berish va 24 oygacha kafolat bilan"
+              : 'С бесплатной доставкой и гарантией до 24 месяцев'}
+          </p>
         </div>
         <div className="inline-flex items-center gap-8 self-start bg-background/95 rounded-full pl-6 pr-2 py-2">
           <span className="text-xs lg:text-sm font-medium text-foreground whitespace-nowrap">
@@ -145,7 +150,7 @@ export function HeroBento({
         {/* O'ng ustun */}
         <div className="grid grid-rows-2 gap-6">
           {wide ? (
-            <SetTile set={wide} language={language} tint={TINTS[0]} wide />
+            <SetTile set={wide} language={language} tint={TINTS[0]} wide priority />
           ) : (
             <div />
           )}
@@ -166,12 +171,14 @@ function SetTile({
   tint,
   wide = false,
   heightClass = 'min-h-[170px] lg:min-h-0',
+  priority = false,
 }: {
   set: SetLike;
   language: Lang;
   tint: string;
   wide?: boolean;
   heightClass?: string;
+  priority?: boolean;
 }) {
   const title = language === 'uz' ? set.title_uz : set.title_ru;
   return (
@@ -183,6 +190,7 @@ function SetTile({
         <LazyImage
           src={set.image}
           alt={title}
+          priority={priority}
           wrapperClassName="absolute inset-0"
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-luxe"
         />

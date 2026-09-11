@@ -94,6 +94,7 @@ export function CollectionBanners({
                   <LazyImage
                     src={cat.image as string}
                     alt={name}
+                    priority
                     wrapperClassName="absolute inset-0"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-luxe"
                   />
@@ -164,7 +165,7 @@ export function DiscountBanner({
         <div className="grid grid-cols-1 md:grid-cols-2 items-center">
           <div className="order-2 md:order-1 p-8 lg:p-14">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
-              {language === 'uz' ? 'Cheklangan taklif' : 'Ограниченное предложение'}
+              {language === 'uz' ? 'Eng katta chegirma' : 'Самая большая скидка'}
             </span>
             <h2 className="mt-4 font-serif text-4xl lg:text-6xl font-bold text-foreground leading-[1.05]">
               {language === 'uz' ? 'Chegirma' : 'Скидка'}{' '}

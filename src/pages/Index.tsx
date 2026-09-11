@@ -17,7 +17,7 @@ import { PromoCarousel } from '@/components/home/PromoCarousel';
 import { useState, useRef, useEffect } from 'react';
 import { getPageSeo } from '@/lib/pageSeo';
 import { PROMO_ICONS } from '@/lib/promoIcons';
-import { CollectionBanners, DiscountBanner, InspirationSection } from '@/components/home/HomeSections';
+import { CollectionBanners, DiscountBanner, InspirationSection, FeatureStrip } from '@/components/home/HomeSections';
 
 
 import serviceKitchen from '@/assets/service-kitchen.jpg';
@@ -683,8 +683,8 @@ export default function Index() {
       {/* ============ ILHOM (to'plamlar) ============ */}
       <InspirationSection sets={sets} loading={!shouldLoadBelowFoldData || setsLoading} language={language} />
 
-
-
+      {/* ============ ISHONCH BELGILARI (yetkazib berish/qaytarish/kafolat/qo'llab-quvvatlash) ============ */}
+      <FeatureStrip language={language} />
 
     </div>
   );

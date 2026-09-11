@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { asyncHandler } from '../middleware/errorHandler';
+import { faqs } from '@shared/faqData';
+import { getPageSeo } from '@shared/pageSeo';
 
 export const prerenderRouter = Router();
 
@@ -219,6 +221,12 @@ ${products
           name: siteName,
           url: siteUrl,
           description: defaultDesc,
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: settings?.addressUz || "Bunyodkor ko'chasi, 15-uy, Chilonzor tumani",
+            addressLocality: 'Toshkent',
+            addressCountry: 'UZ',
+          },
         },
         {
           '@context': 'https://schema.org',
@@ -246,7 +254,79 @@ ${products
       return;
     }
 
-    // Fallback: generic page for any other static route (about, contact, faq, etc.)
+    // FAQ page — same Q&A the client renders, exposed as FAQPage JSON-LD for
+    // crawlers (e.g. GPTBot, ChatGPT-User) that don't execute JavaScript.
+    if (subPath === '/faq') {
+      const seo = getPageSeo('faq', 'uz');
+      const jsonLd = [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.question_uz,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer_uz },
+          })),
+        },
+      ];
+      const bodyHtml = `
+<h1>${esc(seo.title)}</h1>
+${faqs.map((f) => `<h2>${esc(f.question_uz)}</h2>\n<p>${esc(f.answer_uz)}</p>`).join('\n')}
+`;
+      res.send(page({ siteUrl, path: subPath, title: seo.title, description: seo.description, jsonLd, bodyHtml }));
+      return;
+    }
+
+    // About page
+    if (subPath === '/about') {
+      const seo = getPageSeo('about', 'uz');
+      res.send(
+        page({
+          siteUrl,
+          path: subPath,
+          title: seo.title,
+          description: seo.description,
+          bodyHtml: `<h1>${esc(seo.title)}</h1><p>${esc(seo.description)}</p>`,
+        })
+      );
+      return;
+    }
+
+    // Contact page — list the real branches so crawlers see the actual
+    // address(es) instead of a blank shell.
+    if (subPath === '/contact') {
+      const seo = getPageSeo('contact', 'uz');
+      const branches = await prisma.branch.findMany({
+        where: { isActive: true },
+        orderBy: { orderIndex: 'asc' },
+      });
+      const jsonLd = branches.length
+        ? [
+            {
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: siteName,
+              url: siteUrl,
+              address: {
+                '@type': 'PostalAddress',
+                streetAddress: branches[0].addressUz,
+                addressLocality: 'Toshkent',
+                addressCountry: 'UZ',
+              },
+            },
+          ]
+        : undefined;
+      const bodyHtml = `
+<h1>${esc(seo.title)}</h1>
+<ul>
+${branches.map((b) => `<li>${esc(b.nameUz)}: ${esc(b.addressUz)}${b.phone ? ' — ' + esc(b.phone) : ''}</li>`).join('\n')}
+</ul>
+`;
+      res.send(page({ siteUrl, path: subPath, title: seo.title, description: seo.description, jsonLd, bodyHtml }));
+      return;
+    }
+
+    // Fallback: generic page for any other static route
     res.send(
       page({
         siteUrl,

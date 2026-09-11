@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function placeholderImage(label: string, color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200"><rect width="100%" height="100%" fill="${color}"/><text x="50%" y="50%" font-family="sans-serif" font-size="48" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
 async function upsertSection(slug: string, nameUz: string, nameRu: string, sortOrder: number) {
   return prisma.section.upsert({
     where: { slug },
@@ -39,26 +44,25 @@ async function upsertProduct(opts: {
   descriptionRu: string;
   categoryId: string;
   price: number;
+  originalPrice?: number;
+  showInDiscountBanner?: boolean;
+  images?: string[];
 }) {
+  const data = {
+    nameUz: opts.nameUz,
+    nameRu: opts.nameRu,
+    descriptionUz: opts.descriptionUz,
+    descriptionRu: opts.descriptionRu,
+    categoryId: opts.categoryId,
+    price: opts.price,
+    originalPrice: opts.originalPrice,
+    showInDiscountBanner: opts.showInDiscountBanner ?? false,
+    images: opts.images ?? [],
+  };
   return prisma.product.upsert({
     where: { slug: opts.slug },
-    update: {
-      nameUz: opts.nameUz,
-      nameRu: opts.nameRu,
-      descriptionUz: opts.descriptionUz,
-      descriptionRu: opts.descriptionRu,
-      categoryId: opts.categoryId,
-      price: opts.price,
-    },
-    create: {
-      slug: opts.slug,
-      nameUz: opts.nameUz,
-      nameRu: opts.nameRu,
-      descriptionUz: opts.descriptionUz,
-      descriptionRu: opts.descriptionRu,
-      categoryId: opts.categoryId,
-      price: opts.price,
-    },
+    update: data,
+    create: { slug: opts.slug, ...data },
   });
 }
 
@@ -126,6 +130,9 @@ async function main() {
       'Угловой диван Milano с современным дизайном, мягкой и износостойкой тканью. Удобен для больших семей, раскладывается в кровать.',
     categoryId: sofas.id,
     price: 8500000,
+    originalPrice: 10600000,
+    showInDiscountBanner: true,
+    images: [placeholderImage('Milano', '#8a7458')],
   });
   const verona = await upsertProduct({
     slug: 'verona-ikki-kishilik-krovat',
@@ -135,6 +142,7 @@ async function main() {
     descriptionRu: 'Кровать Verona на деревянном каркасе в минималистичном стиле. Придаёт спальне уют и современность.',
     categoryId: beds.id,
     price: 4200000,
+    images: [placeholderImage('Verona', '#5c6b73')],
   });
   const nordic = await upsertProduct({
     slug: 'nordic-oshxona-stoli',
@@ -144,6 +152,7 @@ async function main() {
     descriptionRu: 'Кухонный стол Nordic в скандинавском стиле, подходит для семей из 4-6 человек.',
     categoryId: kitchenTables.id,
     price: 3100000,
+    images: [placeholderImage('Nordic', '#3f4a3d')],
   });
   console.log(`  ${milano.nameUz}, ${verona.nameUz}, ${nordic.nameUz}`);
 

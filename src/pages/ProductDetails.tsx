@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, ShoppingBag, MessageCircle, Phone, Check, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Star, ShoppingBag, MessageCircle, Phone, Check, Loader2, Play, Truck, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { ProductCard } from '@/components/ProductCard';
@@ -409,6 +409,20 @@ export default function ProductDetails() {
                 <Phone className="w-4 h-4" /> {t.products.requestConsultation}
               </a>
             </Button>
+
+            {/* Risk reversal: trust badges right at the decision point */}
+            <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-muted/50 rounded-xl">
+              {[
+                { Icon: Truck, text: language === 'uz' ? 'Bepul yetkazib berish' : 'Бесплатная доставка' },
+                { Icon: RotateCcw, text: language === 'uz' ? '14 kun qaytarish' : 'Возврат за 14 дней' },
+                { Icon: ShieldCheck, text: language === 'uz' ? '24 oy kafolat' : 'Гарантия 24 мес' },
+              ].map(({ Icon, text }) => (
+                <div key={text} className="flex flex-col items-center gap-1.5 text-center">
+                  <Icon className="w-5 h-5 text-primary" strokeWidth={1.6} />
+                  <span className="text-[11px] leading-tight text-muted-foreground">{text}</span>
+                </div>
+              ))}
+            </div>
 
             {/* Materials */}
             {materials.length > 0 && (
